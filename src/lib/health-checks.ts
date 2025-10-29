@@ -90,7 +90,7 @@ export async function testSimulatorHandshake(): Promise<FetchResult> {
       status: 0,
       durationMs: 0,
       message:
-        "API key is not configured. Provide one above or set NEXT_PUBLIC_BACKEND_KEY (or NEXT_PUBLIC_BACKEND_API_KEY) to run the handshake check."
+        "API key is not configured. Provide one above or set NEXT_PUBLIC_BACKEND_KEY to run the handshake check."
     };
   }
 
@@ -118,7 +118,7 @@ export async function testSimulatorHandshake(): Promise<FetchResult> {
     return {
       ...result,
       message:
-        "Handshake request failed: backend rejected the API key. Double-check the value provided above or the NEXT_PUBLIC_BACKEND_KEY / NEXT_PUBLIC_BACKEND_API_KEY environment variable."
+        "Handshake request failed: backend rejected the API key. Double-check the value provided above or the NEXT_PUBLIC_BACKEND_KEY environment variable."
     };
   }
 
