@@ -2,7 +2,7 @@ export type Simulator = {
   id: string;
   name: string;
   target_kwh: number;
-  whatsapp_msisdn?: string | null;
+  whatsapp_number?: string | null;
   created_at?: string;
   updated_at?: string;
   latest_block?: LatestBlock | null;
@@ -14,7 +14,7 @@ export type CreateSimulatorInput = {
   simulator: {
     name: string;
     target_kwh: number;
-    whatsapp_msisdn?: string | null;
+    whatsapp_number?: string | null;
   };
 };
 
