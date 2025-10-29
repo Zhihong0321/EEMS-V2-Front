@@ -199,7 +199,7 @@ export default function HealthCheckConsole() {
                   </button>
                 )}
                 <span className="text-slate-500">
-                  Useful when Railway rewrites environment variables with "API" into secret references.
+                  Useful when Railway rewrites environment variables with &ldquo;API&rdquo; into secret references.
                 </span>
               </div>
             </div>
