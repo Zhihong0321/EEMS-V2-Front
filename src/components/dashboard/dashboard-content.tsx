@@ -72,7 +72,7 @@ export function DashboardContent({
             </p>
           </div>
           <Link
-            href={{ pathname: "/sim/[id]/run", params: { id: simulatorId } }}
+            href={{ pathname: "/sim/[id]/run", query: { id: simulatorId } }}
             className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-cyan-600"
           >
             Open controls
