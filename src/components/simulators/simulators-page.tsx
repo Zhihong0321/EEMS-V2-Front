@@ -54,6 +54,15 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
       setFormError("Target kWh must be greater than zero");
       return;
     }
+    const trimmedWhatsApp = form.whatsapp.trim();
+    const whatsappNumber =
+      trimmedWhatsApp.length > 0 ? Number.parseInt(trimmedWhatsApp, 10) : undefined;
+
+    if (trimmedWhatsApp.length > 0 && Number.isNaN(whatsappNumber)) {
+      setFormError("WhatsApp number must contain digits only");
+      return;
+    }
+
     setFormError(null);
     setSubmitting(true);
     try {
@@ -61,7 +70,7 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
         simulator: {
           name: form.name.trim(),
           target_kwh: form.target,
-          whatsapp_number: form.whatsapp.trim() || undefined
+          ...(whatsappNumber !== undefined ? { whatsapp_number: whatsappNumber } : {})
         }
       });
       setForm({ name: "", target: 500, whatsapp: "" });
@@ -192,7 +201,16 @@ type CreateSimulatorDialogProps = {
 
 function CreateSimulatorDialog({ open, onClose, form, onFormChange, onSubmit, submitting, error }: CreateSimulatorDialogProps) {
   const updateField = (field: keyof FormState) => (event: ChangeEvent<HTMLInputElement>) => {
-    onFormChange({ ...form, [field]: field === "target" ? Number(event.target.value) : event.target.value });
+    if (field === "target") {
+      onFormChange({ ...form, target: Number(event.target.value) });
+      return;
+    }
+    if (field === "whatsapp") {
+      const digitsOnly = event.target.value.replace(/[^0-9]/g, "");
+      onFormChange({ ...form, whatsapp: digitsOnly });
+      return;
+    }
+    onFormChange({ ...form, name: event.target.value });
   };
 
   return (
@@ -224,7 +242,7 @@ function CreateSimulatorDialog({ open, onClose, form, onFormChange, onSubmit, su
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 text-left align-middle shadow-xl transition-all">
                 <Dialog.Title className="text-lg font-semibold text-white">Create simulator</Dialog.Title>
                 <p className="mt-1 text-sm text-slate-400">
-                  Provide a friendly name, target kWh, and optional WhatsApp number for alerting.
+                  Provide a friendly name, target kWh, and optional WhatsApp number for alerting. Enter digits only (no plus sign).
                 </p>
                 <form className="mt-6 space-y-4" onSubmit={onSubmit}>
                   <label className="flex flex-col gap-2 text-sm">
@@ -249,9 +267,11 @@ function CreateSimulatorDialog({ open, onClose, form, onFormChange, onSubmit, su
                     />
                   </label>
                   <label className="flex flex-col gap-2 text-sm">
-                    <span className="text-xs uppercase tracking-[0.2em] text-slate-500">WhatsApp number (optional)</span>
+                    <span className="text-xs uppercase tracking-[0.2em] text-slate-500">WhatsApp number (digits only, optional)</span>
                     <input
                       type="tel"
+                      inputMode="numeric"
+                      pattern="\d*"
                       value={form.whatsapp}
                       onChange={updateField("whatsapp")}
                       className="w-full rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none"
