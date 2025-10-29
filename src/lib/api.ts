@@ -1,7 +1,10 @@
 import { getEffectiveApiKey } from "./api-key";
 import { type ApiErrorPayload, type CreateSimulatorInput, type HistoryBlock, type IngestRequest, type LatestBlock, type Simulator, type SimulatorListResponse } from "./types";
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
+// Route all browser requests through a same-origin proxy to avoid CORS.
+// The proxy is implemented at /api/bridge/[...path].
+// This keeps the frontend free from cross-origin limitations.
+export const API_BASE_URL = "/api/bridge";
 
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 
