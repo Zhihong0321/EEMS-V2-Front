@@ -26,6 +26,12 @@ export type CreateSimulatorPayload = {
   };
 };
 
+export type FlatCreateSimulatorPayload = {
+  name: string;
+  target_kwh: number;
+  whatsapp_msisdn?: string | null;
+};
+
 export type TickIn = {
   power_kw: number;
   sample_seconds: number;

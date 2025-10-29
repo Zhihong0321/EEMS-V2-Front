@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -p ${PORT:-3000}",
-    "lint": "next lint"
+    "lint": "next lint",
+    "probe:create-simulator": "node scripts/probe-create-simulator.mjs"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",

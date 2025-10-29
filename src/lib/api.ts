@@ -4,6 +4,7 @@ import {
   type ApiSimulator,
   type CreateSimulatorInput,
   type CreateSimulatorPayload,
+  type FlatCreateSimulatorPayload,
   type HistoryBlock,
   type IngestRequest,
   type LatestBlock,
@@ -188,13 +189,7 @@ function formatTargetKwh(value: number): string {
   return asString.includes(".") ? asString : `${asString}.0`;
 }
 
-export async function getSimulators(): Promise<Simulator[]> {
-  const payload = await getJson<SimulatorListResponse>("/api/v1/simulators");
-  const simulators = Array.isArray(payload) ? payload : payload.data ?? [];
-  return simulators.map(normalizeSimulator);
-}
-
-export async function createSimulator(input: CreateSimulatorInput): Promise<Simulator> {
+function buildNestedCreatePayload(input: CreateSimulatorInput): CreateSimulatorPayload {
   const payload: CreateSimulatorPayload = {
     simulator: {
       name: input.name,
@@ -206,15 +201,66 @@ export async function createSimulator(input: CreateSimulatorInput): Promise<Simu
     payload.simulator.whatsapp_msisdn = input.whatsapp_msisdn;
   }
 
-  const simulator = await requestJson<ApiSimulator>(
+  return payload;
+}
+
+function buildFlatCreatePayload(input: CreateSimulatorInput): FlatCreateSimulatorPayload {
+  const payload: FlatCreateSimulatorPayload = {
+    name: input.name,
+    target_kwh: input.target_kwh
+  };
+
+  if (input.whatsapp_msisdn) {
+    payload.whatsapp_msisdn = input.whatsapp_msisdn;
+  }
+
+  return payload;
+}
+
+function isMissingSimulatorEnvelope(error: ApiError): boolean {
+  if (error.status !== 422) {
+    return false;
+  }
+
+  const message = error.message?.toLowerCase();
+  if (!message) {
+    return false;
+  }
+
+  return message.includes("param is missing") && message.includes("simulator");
+}
+
+async function postSimulator(body: CreateSimulatorPayload | FlatCreateSimulatorPayload): Promise<ApiSimulator> {
+  return await requestJson<ApiSimulator>(
     "/api/v1/simulators",
     withWriteHeaders({
       method: "POST",
-      body: JSON.stringify(payload)
+      body: JSON.stringify(body)
     }),
     { retryDelays: [500, 1500, 3500] }
   );
+}
 
+export async function getSimulators(): Promise<Simulator[]> {
+  const payload = await getJson<SimulatorListResponse>("/api/v1/simulators");
+  const simulators = Array.isArray(payload) ? payload : payload.data ?? [];
+  return simulators.map(normalizeSimulator);
+}
+
+export async function createSimulator(input: CreateSimulatorInput): Promise<Simulator> {
+  const primaryPayload = buildNestedCreatePayload(input);
+
+  try {
+    const simulator = await postSimulator(primaryPayload);
+    return normalizeSimulator(simulator);
+  } catch (error) {
+    if (!(error instanceof ApiError) || !isMissingSimulatorEnvelope(error)) {
+      throw error;
+    }
+  }
+
+  const fallbackPayload = buildFlatCreatePayload(input);
+  const simulator = await postSimulator(fallbackPayload);
   return normalizeSimulator(simulator);
 }
 
