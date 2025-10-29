@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 import { AutoRunPanel } from "@/components/common/auto-run-panel";
 import { ManualRunPanel } from "@/components/common/manual-run-panel";
 import { useAutoEmitter, useManualEmitter } from "@/lib/emitter";
@@ -42,6 +43,7 @@ export function SimulatorRunContent({ simulatorId, simulatorName, targetKwh }: S
   };
 
   const timezoneLabel = process.env.NEXT_PUBLIC_TIMEZONE_LABEL ?? "Asia/Kuala_Lumpur";
+  const dashboardHref = `/sim/${simulatorId}` satisfies Route<"/sim/[id]">;
 
   return (
     <section className="space-y-10">
@@ -55,7 +57,7 @@ export function SimulatorRunContent({ simulatorId, simulatorName, targetKwh }: S
           <p className="text-xs text-slate-500">Target block: {targetKwh ? `${targetKwh} kWh` : "—"} · Timezone {timezoneLabel}</p>
         </div>
         <Link
-          href={`/sim/${simulatorId}`}
+          href={dashboardHref}
           className="inline-flex items-center rounded-md border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white"
         >
           Back to dashboard
