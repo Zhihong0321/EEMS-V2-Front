@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { Route } from "next";
 import { AutoRunPanel } from "@/components/common/auto-run-panel";
 import { ManualRunPanel } from "@/components/common/manual-run-panel";
 import { useAutoEmitter, useManualEmitter } from "@/lib/emitter";
@@ -43,7 +42,7 @@ export function SimulatorRunContent({ simulatorId, simulatorName, targetKwh }: S
   };
 
   const timezoneLabel = process.env.NEXT_PUBLIC_TIMEZONE_LABEL ?? "Asia/Kuala_Lumpur";
-  const dashboardHref = `/sim/${simulatorId}` as Route<"/sim/[id]">;
+  const dashboardHref = { pathname: "/sim/[id]" as const, query: { id: simulatorId } };
 
   return (
     <section className="space-y-10">
