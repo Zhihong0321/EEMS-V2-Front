@@ -163,7 +163,7 @@ export async function getSimulators(): Promise<Simulator[]> {
 }
 
 export async function createSimulator(input: CreateSimulatorInput): Promise<Simulator> {
-  return await requestJson<Simulator>(
+  const response = await requestJson<Simulator | { data: Simulator }>(
     "/api/v1/simulators",
     withWriteHeaders({
       method: "POST",
@@ -171,6 +171,12 @@ export async function createSimulator(input: CreateSimulatorInput): Promise<Simu
     }),
     { retryDelays: [500, 1500, 3500] }
   );
+
+  if ("data" in response) {
+    return response.data;
+  }
+
+  return response;
 }
 
 export async function fetchLatestBlock(simulatorId: string): Promise<LatestBlock> {

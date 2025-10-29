@@ -58,9 +58,11 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
     setSubmitting(true);
     try {
       await create({
-        name: form.name.trim(),
-        target_kwh: form.target,
-        whatsapp_msisdn: form.whatsapp.trim() || undefined
+        simulator: {
+          name: form.name.trim(),
+          target_kwh: form.target,
+          whatsapp_msisdn: form.whatsapp.trim() || undefined
+        }
       });
       setForm({ name: "", target: 500, whatsapp: "" });
       setIsDialogOpen(false);

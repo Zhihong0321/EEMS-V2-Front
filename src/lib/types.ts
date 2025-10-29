@@ -11,9 +11,11 @@ export type Simulator = {
 export type SimulatorListResponse = Simulator[] | { data: Simulator[] };
 
 export type CreateSimulatorInput = {
-  name: string;
-  target_kwh: number;
-  whatsapp_msisdn?: string | null;
+  simulator: {
+    name: string;
+    target_kwh: number;
+    whatsapp_msisdn?: string | null;
+  };
 };
 
 export type TickIn = {
