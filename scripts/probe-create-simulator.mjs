@@ -35,15 +35,6 @@ function createHeaders(apiKey) {
   return headers;
 }
 
-function formatTarget(value) {
-  const numeric = Number.parseFloat(value);
-  if (!Number.isFinite(numeric)) {
-    throw new Error(`Invalid --target value: ${value}`);
-  }
-  const asString = numeric.toString();
-  return asString.includes(".") ? asString : `${asString}.0`;
-}
-
 function uniqueName(base) {
   const suffix = Math.random().toString(36).slice(2, 8);
   return `${base}-${suffix}`;
@@ -88,39 +79,27 @@ async function main() {
   const targetArg = getArg("--target", "500");
   const whatsappArg = getArg("--whatsapp", null);
 
-  const flatName = uniqueName(`${baseName}-flat`);
-  const nestedName = uniqueName(`${baseName}-nested`);
-
   const targetNumber = Number.parseFloat(targetArg);
   if (!Number.isFinite(targetNumber)) {
     console.error(`Invalid --target value: ${targetArg}`);
     process.exit(1);
   }
 
-  const nestedPayload = {
-    simulator: {
-      name: nestedName,
-      target_kwh: formatTarget(targetNumber)
-    }
-  };
-
-  const flatPayload = {
-    name: flatName,
+  const payload = {
+    name: uniqueName(baseName),
     target_kwh: targetNumber
   };
 
   if (typeof whatsappArg === "string" && whatsappArg.trim() !== "") {
-    nestedPayload.simulator.whatsapp_msisdn = whatsappArg;
-    flatPayload.whatsapp_msisdn = whatsappArg;
+    payload.whatsapp_msisdn = whatsappArg;
   }
 
   const headers = createHeaders(typeof apiKeyArg === "string" ? apiKeyArg : undefined);
   const endpoint = `${baseUrl}/api/v1/simulators`;
 
-  await sendRequest("Nested simulator payload", endpoint, nestedPayload, headers);
-  await sendRequest("Flat simulator payload", endpoint, flatPayload, headers);
+  await sendRequest("Simulator payload", endpoint, payload, headers);
 
-  console.log("\nDone. Compare the responses above to determine which payload shape your backend expects.");
+  console.log("\nDone. The request above matches the confirmed backend contract.");
 }
 
 main().catch((error) => {

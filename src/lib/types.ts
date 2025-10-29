@@ -19,14 +19,6 @@ export type CreateSimulatorInput = {
 };
 
 export type CreateSimulatorPayload = {
-  simulator: {
-    name: string;
-    target_kwh: string;
-    whatsapp_msisdn?: string | null;
-  };
-};
-
-export type FlatCreateSimulatorPayload = {
   name: string;
   target_kwh: number;
   whatsapp_msisdn?: string | null;

@@ -4,7 +4,6 @@ import {
   type ApiSimulator,
   type CreateSimulatorInput,
   type CreateSimulatorPayload,
-  type FlatCreateSimulatorPayload,
   type HistoryBlock,
   type IngestRequest,
   type LatestBlock,
@@ -181,56 +180,7 @@ function normalizeSimulator(simulator: ApiSimulator): Simulator {
   };
 }
 
-function formatTargetKwh(value: number): string {
-  if (!Number.isFinite(value)) {
-    throw new ApiError("Target kWh must be a finite number.", 0);
-  }
-  const asString = value.toString();
-  return asString.includes(".") ? asString : `${asString}.0`;
-}
-
-function buildNestedCreatePayload(input: CreateSimulatorInput): CreateSimulatorPayload {
-  const payload: CreateSimulatorPayload = {
-    simulator: {
-      name: input.name,
-      target_kwh: formatTargetKwh(input.target_kwh)
-    }
-  };
-
-  if (input.whatsapp_msisdn) {
-    payload.simulator.whatsapp_msisdn = input.whatsapp_msisdn;
-  }
-
-  return payload;
-}
-
-function buildFlatCreatePayload(input: CreateSimulatorInput): FlatCreateSimulatorPayload {
-  const payload: FlatCreateSimulatorPayload = {
-    name: input.name,
-    target_kwh: input.target_kwh
-  };
-
-  if (input.whatsapp_msisdn) {
-    payload.whatsapp_msisdn = input.whatsapp_msisdn;
-  }
-
-  return payload;
-}
-
-function isMissingSimulatorEnvelope(error: ApiError): boolean {
-  if (error.status !== 422) {
-    return false;
-  }
-
-  const message = error.message?.toLowerCase();
-  if (!message) {
-    return false;
-  }
-
-  return message.includes("param is missing") && message.includes("simulator");
-}
-
-async function postSimulator(body: CreateSimulatorPayload | FlatCreateSimulatorPayload): Promise<ApiSimulator> {
+async function postSimulator(body: CreateSimulatorPayload): Promise<ApiSimulator> {
   return await requestJson<ApiSimulator>(
     "/api/v1/simulators",
     withWriteHeaders({
@@ -248,19 +198,16 @@ export async function getSimulators(): Promise<Simulator[]> {
 }
 
 export async function createSimulator(input: CreateSimulatorInput): Promise<Simulator> {
-  const primaryPayload = buildNestedCreatePayload(input);
+  const payload: CreateSimulatorPayload = {
+    name: input.name,
+    target_kwh: input.target_kwh
+  };
 
-  try {
-    const simulator = await postSimulator(primaryPayload);
-    return normalizeSimulator(simulator);
-  } catch (error) {
-    if (!(error instanceof ApiError) || !isMissingSimulatorEnvelope(error)) {
-      throw error;
-    }
+  if (input.whatsapp_msisdn) {
+    payload.whatsapp_msisdn = input.whatsapp_msisdn;
   }
 
-  const fallbackPayload = buildFlatCreatePayload(input);
-  const simulator = await postSimulator(fallbackPayload);
+  const simulator = await postSimulator(payload);
   return normalizeSimulator(simulator);
 }
 
