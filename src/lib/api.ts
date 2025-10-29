@@ -163,6 +163,7 @@ export async function getSimulators(): Promise<Simulator[]> {
 }
 
 export async function createSimulator(input: CreateSimulatorInput): Promise<Simulator> {
+  // Backend expects a flat body (name, target_kwh, whatsapp_number?)
   const response = await requestJson<Simulator | { data: Simulator }>(
     "/api/v1/simulators",
     withWriteHeaders({

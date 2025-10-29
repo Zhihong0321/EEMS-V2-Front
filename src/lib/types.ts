@@ -10,12 +10,17 @@ export type Simulator = {
 
 export type SimulatorListResponse = Simulator[] | { data: Simulator[] };
 
+// Backend expects a flat JSON body for simulator creation.
+// Example:
+// {
+//   "name": "Factory A",
+//   "target_kwh": 120,
+//   "whatsapp_number": 60123456789
+// }
 export type CreateSimulatorInput = {
-  simulator: {
-    name: string;
-    target_kwh: number;
-    whatsapp_number?: number | null;
-  };
+  name: string;
+  target_kwh: number;
+  whatsapp_number?: number | null;
 };
 
 export type TickIn = {
