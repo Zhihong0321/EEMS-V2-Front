@@ -1,10 +1,10 @@
 const STORAGE_KEY = "eems.apiKeyOverride";
 
 const ENV_KEY_CANDIDATES = [
-  "NEXT_PUBLIC_BACKEND_TOKEN",
-  "NEXT_PUBLIC_BACKEND_WRITE_TOKEN",
-  "NEXT_PUBLIC_BACKEND_KEY",
-  "NEXT_PUBLIC_BACKEND_API_KEY"
+  { name: "NEXT_PUBLIC_BACKEND_TOKEN", value: process.env.NEXT_PUBLIC_BACKEND_TOKEN },
+  { name: "NEXT_PUBLIC_BACKEND_WRITE_TOKEN", value: process.env.NEXT_PUBLIC_BACKEND_WRITE_TOKEN },
+  { name: "NEXT_PUBLIC_BACKEND_KEY", value: process.env.NEXT_PUBLIC_BACKEND_KEY },
+  { name: "NEXT_PUBLIC_BACKEND_API_KEY", value: process.env.NEXT_PUBLIC_BACKEND_API_KEY }
 ] as const;
 
 let overrideValue: string | null = null;
@@ -32,9 +32,8 @@ function loadPersistedOverride() {
 
 function resolveEnvApiKey(): { name: string; value: string } | null {
   for (const candidate of ENV_KEY_CANDIDATES) {
-    const value = process.env[candidate];
-    if (value) {
-      return { name: candidate, value };
+    if (candidate.value) {
+      return { name: candidate.name, value: candidate.value };
     }
   }
   return null;
