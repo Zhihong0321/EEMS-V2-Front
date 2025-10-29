@@ -14,6 +14,7 @@ import {
   getApiKeyOverride,
   getEffectiveApiKey,
   getEnvApiKey,
+  getEnvApiKeyName,
   hasEnvApiKey,
   isOverridePersisted,
   setApiKeyOverride
@@ -41,6 +42,7 @@ export default function HealthCheckConsole() {
   const hasBaseUrl = baseUrl.length > 0;
   const envApiKey = useMemo(() => getEnvApiKey(), []);
   const envApiKeyPresent = hasEnvApiKey();
+  const envApiKeyName = useMemo(() => getEnvApiKeyName(), []);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [persistOverride, setPersistOverride] = useState(false);
   const [usingOverride, setUsingOverride] = useState(false);
@@ -81,7 +83,7 @@ export default function HealthCheckConsole() {
       ? "Using manual override (saved locally)"
       : "Using manual override"
     : envApiKeyPresent
-    ? "Using NEXT_PUBLIC_BACKEND_API_KEY"
+    ? `Using ${envApiKeyName ?? "environment API key"}`
     : "API key not configured";
 
   const runCheck = async (key: CheckKey) => {
@@ -197,7 +199,7 @@ export default function HealthCheckConsole() {
                   </button>
                 )}
                 <span className="text-slate-500">
-                  Useful when Railway treats NEXT_PUBLIC_BACKEND_API_KEY as a secret reference.
+                  Useful when Railway rewrites environment variables with "API" into secret references.
                 </span>
               </div>
             </div>

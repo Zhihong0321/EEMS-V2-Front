@@ -24,7 +24,17 @@ function loadPersistedOverride() {
 }
 
 export function getEnvApiKey(): string {
-  return process.env.NEXT_PUBLIC_BACKEND_API_KEY ?? "";
+  return process.env.NEXT_PUBLIC_BACKEND_KEY ?? process.env.NEXT_PUBLIC_BACKEND_API_KEY ?? "";
+}
+
+export function getEnvApiKeyName(): string | null {
+  if (process.env.NEXT_PUBLIC_BACKEND_KEY) {
+    return "NEXT_PUBLIC_BACKEND_KEY";
+  }
+  if (process.env.NEXT_PUBLIC_BACKEND_API_KEY) {
+    return "NEXT_PUBLIC_BACKEND_API_KEY";
+  }
+  return null;
 }
 
 export function getApiKeyOverride(): string | null {
