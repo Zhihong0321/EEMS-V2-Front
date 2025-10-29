@@ -49,15 +49,17 @@ Now (prototype). Production hardening (auth, roles, caching, MQTT publisher) com
 **Networking assumptions:**
 
 * `NEXT_PUBLIC_BACKEND_URL` points to the backend Railway URL.
-* All **writes** require API key header (`x-api-key`). Provide it via env var `NEXT_PUBLIC_BACKEND_KEY` or the manual override on the `/health` page (prototype convenience). In production, move this to a server proxy or session auth.
+* All **writes** require API key header (`x-api-key`). Provide it via env var `NEXT_PUBLIC_BACKEND_TOKEN` (or paste an override on the `/health` page for prototypes). In production, move this to a server proxy or session auth.
 
 ---
 
 ## 2) Environment Variables
 
 * `NEXT_PUBLIC_BACKEND_URL` — e.g., `https://eternalgy-ems-backend.up.railway.app`
-* `NEXT_PUBLIC_BACKEND_KEY` — only for prototype (write routes). Optional if you plan to paste an override on `/health`.
+* `NEXT_PUBLIC_BACKEND_TOKEN` — only for prototype (write routes). Optional if you plan to paste an override on `/health`.
 * `NEXT_PUBLIC_TIMEZONE_LABEL` — default: `Asia/Kuala_Lumpur` (for UI labels).
+
+> Railway quirk: if the dashboard rewrites variable names containing `API`/`KEY`, you can instead set `NEXT_PUBLIC_BACKEND_TOKEN` (preferred) or `NEXT_PUBLIC_BACKEND_WRITE_TOKEN`. The app will also accept the legacy `NEXT_PUBLIC_BACKEND_KEY` / `NEXT_PUBLIC_BACKEND_API_KEY` names if you already have them configured elsewhere.
 
 > **Security note (prototype):** Exposing API key to the browser is acceptable here only for simulation. Later, route writes through a Next server action / edge function that injects the real secret.
 
@@ -240,7 +242,7 @@ export type SseEvent =
 ```ts
 const WRITE_HEADERS = {
   'content-type': 'application/json',
-  'x-api-key': process.env.NEXT_PUBLIC_BACKEND_KEY!,
+  'x-api-key': process.env.NEXT_PUBLIC_BACKEND_TOKEN!,
 } as const;
 
 // When deploying without embedding the key, paste an override on /health and the UI will reuse it for write calls.
@@ -441,7 +443,7 @@ If we want early parity with production meters:
 
 ```
 NEXT_PUBLIC_BACKEND_URL=https://eternalgy-ems-backend.up.railway.app
-NEXT_PUBLIC_BACKEND_KEY=dev-only-key
+NEXT_PUBLIC_BACKEND_TOKEN=dev-only-token
 NEXT_PUBLIC_TIMEZONE_LABEL=Asia/Kuala_Lumpur
 ```
 

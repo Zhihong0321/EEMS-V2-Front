@@ -1,5 +1,12 @@
 const STORAGE_KEY = "eems.apiKeyOverride";
 
+const ENV_KEY_CANDIDATES = [
+  "NEXT_PUBLIC_BACKEND_TOKEN",
+  "NEXT_PUBLIC_BACKEND_WRITE_TOKEN",
+  "NEXT_PUBLIC_BACKEND_KEY",
+  "NEXT_PUBLIC_BACKEND_API_KEY"
+] as const;
+
 let overrideValue: string | null = null;
 let hasLoadedPersisted = false;
 let isPersisted = false;
@@ -23,15 +30,22 @@ function loadPersistedOverride() {
   }
 }
 
+function resolveEnvApiKey(): { name: string; value: string } | null {
+  for (const candidate of ENV_KEY_CANDIDATES) {
+    const value = process.env[candidate];
+    if (value) {
+      return { name: candidate, value };
+    }
+  }
+  return null;
+}
+
 export function getEnvApiKey(): string {
-  return process.env.NEXT_PUBLIC_BACKEND_KEY ?? "";
+  return resolveEnvApiKey()?.value ?? "";
 }
 
 export function getEnvApiKeyName(): string | null {
-  if (process.env.NEXT_PUBLIC_BACKEND_KEY) {
-    return "NEXT_PUBLIC_BACKEND_KEY";
-  }
-  return null;
+  return resolveEnvApiKey()?.name ?? null;
 }
 
 export function getApiKeyOverride(): string | null {
