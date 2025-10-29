@@ -43,7 +43,7 @@ export function SimulatorRunContent({ simulatorId, simulatorName, targetKwh }: S
   };
 
   const timezoneLabel = process.env.NEXT_PUBLIC_TIMEZONE_LABEL ?? "Asia/Kuala_Lumpur";
-  const dashboardHref = `/sim/${simulatorId}` satisfies Route<"/sim/[id]">;
+  const dashboardHref = `/sim/${simulatorId}` as Route<"/sim/[id]">;
 
   return (
     <section className="space-y-10">
