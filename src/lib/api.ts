@@ -196,12 +196,14 @@ export async function getSimulators(): Promise<Simulator[]> {
 
 export async function createSimulator(input: CreateSimulatorInput): Promise<Simulator> {
   const payload: CreateSimulatorPayload = {
-    name: input.name,
-    target_kwh: formatTargetKwh(input.target_kwh)
+    simulator: {
+      name: input.name,
+      target_kwh: formatTargetKwh(input.target_kwh)
+    }
   };
 
   if (input.whatsapp_msisdn) {
-    payload.whatsapp_msisdn = input.whatsapp_msisdn;
+    payload.simulator.whatsapp_msisdn = input.whatsapp_msisdn;
   }
 
   const simulator = await requestJson<ApiSimulator>(

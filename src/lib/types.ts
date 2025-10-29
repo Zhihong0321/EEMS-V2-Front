@@ -19,9 +19,11 @@ export type CreateSimulatorInput = {
 };
 
 export type CreateSimulatorPayload = {
-  name: string;
-  target_kwh: string;
-  whatsapp_msisdn?: string | null;
+  simulator: {
+    name: string;
+    target_kwh: string;
+    whatsapp_msisdn?: string | null;
+  };
 };
 
 export type TickIn = {
