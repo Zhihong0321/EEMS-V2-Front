@@ -8,11 +8,19 @@ export type Simulator = {
   latest_block?: LatestBlock | null;
 };
 
-export type SimulatorListResponse = Simulator[] | { data: Simulator[] };
+export type ApiSimulator = Omit<Simulator, "target_kwh"> & { target_kwh: number | string };
+
+export type SimulatorListResponse = ApiSimulator[] | { data: ApiSimulator[] };
 
 export type CreateSimulatorInput = {
   name: string;
   target_kwh: number;
+  whatsapp_msisdn?: string | null;
+};
+
+export type CreateSimulatorPayload = {
+  name: string;
+  target_kwh: string;
   whatsapp_msisdn?: string | null;
 };
 

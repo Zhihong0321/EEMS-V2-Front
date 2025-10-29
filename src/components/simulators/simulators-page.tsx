@@ -239,8 +239,8 @@ function CreateSimulatorDialog({ open, onClose, form, onFormChange, onSubmit, su
                     <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Target kWh</span>
                     <input
                       type="number"
-                      min={1}
-                      step={1}
+                      min={0.1}
+                      step={0.1}
                       value={form.target}
                       onChange={updateField("target")}
                       className="w-full rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none"

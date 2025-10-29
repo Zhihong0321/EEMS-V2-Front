@@ -1,5 +1,15 @@
 import { getEffectiveApiKey } from "./api-key";
-import { type ApiErrorPayload, type CreateSimulatorInput, type HistoryBlock, type IngestRequest, type LatestBlock, type Simulator, type SimulatorListResponse } from "./types";
+import {
+  type ApiErrorPayload,
+  type ApiSimulator,
+  type CreateSimulatorInput,
+  type CreateSimulatorPayload,
+  type HistoryBlock,
+  type IngestRequest,
+  type LatestBlock,
+  type Simulator,
+  type SimulatorListResponse
+} from "./types";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
 
@@ -154,23 +164,56 @@ export function simulatorEndpoint(path: string) {
   return buildUrl(path);
 }
 
+function normalizeSimulator(simulator: ApiSimulator): Simulator {
+  const targetValue =
+    typeof simulator.target_kwh === "string"
+      ? Number.parseFloat(simulator.target_kwh)
+      : simulator.target_kwh;
+
+  if (!Number.isFinite(targetValue)) {
+    throw new ApiError("Received invalid target_kwh from backend.", 0);
+  }
+
+  return {
+    ...simulator,
+    target_kwh: targetValue
+  };
+}
+
+function formatTargetKwh(value: number): string {
+  if (!Number.isFinite(value)) {
+    throw new ApiError("Target kWh must be a finite number.", 0);
+  }
+  const asString = value.toString();
+  return asString.includes(".") ? asString : `${asString}.0`;
+}
+
 export async function getSimulators(): Promise<Simulator[]> {
   const payload = await getJson<SimulatorListResponse>("/api/v1/simulators");
-  if (Array.isArray(payload)) {
-    return payload;
-  }
-  return payload.data ?? [];
+  const simulators = Array.isArray(payload) ? payload : payload.data ?? [];
+  return simulators.map(normalizeSimulator);
 }
 
 export async function createSimulator(input: CreateSimulatorInput): Promise<Simulator> {
-  return await requestJson<Simulator>(
+  const payload: CreateSimulatorPayload = {
+    name: input.name,
+    target_kwh: formatTargetKwh(input.target_kwh)
+  };
+
+  if (input.whatsapp_msisdn) {
+    payload.whatsapp_msisdn = input.whatsapp_msisdn;
+  }
+
+  const simulator = await requestJson<ApiSimulator>(
     "/api/v1/simulators",
     withWriteHeaders({
       method: "POST",
-      body: JSON.stringify(input)
+      body: JSON.stringify(payload)
     }),
     { retryDelays: [500, 1500, 3500] }
   );
+
+  return normalizeSimulator(simulator);
 }
 
 export async function fetchLatestBlock(simulatorId: string): Promise<LatestBlock> {
