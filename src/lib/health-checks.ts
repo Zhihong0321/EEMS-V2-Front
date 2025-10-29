@@ -1,4 +1,5 @@
-import { API_BASE_URL, API_KEY, getJson, simulatorEndpoint, withWriteHeaders } from "./api";
+import { API_BASE_URL, getJson, simulatorEndpoint, withWriteHeaders } from "./api";
+import { hasEffectiveApiKey } from "./api-key";
 import type { SimulatorListResponse } from "./types";
 
 type FetchResult = {
@@ -83,13 +84,13 @@ export async function fetchBackendHealth(): Promise<FetchResult> {
 }
 
 export async function testSimulatorHandshake(): Promise<FetchResult> {
-  if (!API_KEY) {
+  if (!hasEffectiveApiKey()) {
     return {
       ok: false,
       status: 0,
       durationMs: 0,
       message:
-        "API key is not configured. Set NEXT_PUBLIC_BACKEND_API_KEY to run the handshake check."
+        "API key is not configured. Provide one above or set NEXT_PUBLIC_BACKEND_API_KEY to run the handshake check."
     };
   }
 
@@ -117,7 +118,7 @@ export async function testSimulatorHandshake(): Promise<FetchResult> {
     return {
       ...result,
       message:
-        "Handshake request failed: backend rejected the API key. Double-check NEXT_PUBLIC_BACKEND_API_KEY."
+        "Handshake request failed: backend rejected the API key. Double-check the value provided above or the NEXT_PUBLIC_BACKEND_API_KEY environment variable."
     };
   }
 

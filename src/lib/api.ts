@@ -1,7 +1,7 @@
+import { getEffectiveApiKey } from "./api-key";
 import { type ApiErrorPayload, type CreateSimulatorInput, type HistoryBlock, type IngestRequest, type LatestBlock, type Simulator, type SimulatorListResponse } from "./types";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
-export const API_KEY = process.env.NEXT_PUBLIC_BACKEND_API_KEY ?? "";
 
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 
@@ -122,13 +122,19 @@ async function requestJson<T>(path: string, init?: RequestInit, options: Request
 }
 
 export function withWriteHeaders(init?: RequestInit): RequestInit {
+  const headers = new Headers(init?.headers);
+  headers.set("Content-Type", "application/json");
+
+  const apiKey = getEffectiveApiKey();
+  if (apiKey) {
+    headers.set("x-api-key", apiKey);
+  } else {
+    headers.delete("x-api-key");
+  }
+
   return {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": API_KEY,
-      ...(init?.headers ?? {})
-    }
+    headers
   };
 }
 

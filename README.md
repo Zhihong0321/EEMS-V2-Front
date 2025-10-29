@@ -49,14 +49,14 @@ Now (prototype). Production hardening (auth, roles, caching, MQTT publisher) com
 **Networking assumptions:**
 
 * `NEXT_PUBLIC_BACKEND_URL` points to the backend Railway URL.
-* All **writes** require API key header (`x-api-key`) pulled from frontend env var `NEXT_PUBLIC_BACKEND_API_KEY` (prototype convenience). In production, move this to a server proxy or session auth.
+* All **writes** require API key header (`x-api-key`). Provide it via env var `NEXT_PUBLIC_BACKEND_API_KEY` or the manual override on the `/health` page (prototype convenience). In production, move this to a server proxy or session auth.
 
 ---
 
 ## 2) Environment Variables
 
 * `NEXT_PUBLIC_BACKEND_URL` — e.g., `https://eternalgy-ems-backend.up.railway.app`
-* `NEXT_PUBLIC_BACKEND_API_KEY` — only for prototype (write routes).
+* `NEXT_PUBLIC_BACKEND_API_KEY` — only for prototype (write routes). Optional if you plan to paste an override on `/health`.
 * `NEXT_PUBLIC_TIMEZONE_LABEL` — default: `Asia/Kuala_Lumpur` (for UI labels).
 
 > **Security note (prototype):** Exposing API key to the browser is acceptable here only for simulation. Later, route writes through a Next server action / edge function that injects the real secret.
@@ -242,6 +242,8 @@ const WRITE_HEADERS = {
   'content-type': 'application/json',
   'x-api-key': process.env.NEXT_PUBLIC_BACKEND_API_KEY!,
 } as const;
+
+// When deploying without embedding the key, paste an override on /health and the UI will reuse it for write calls.
 ```
 
 **Calls:**
@@ -368,7 +370,7 @@ README.md
 
 **Build:** `npm ci && npm run build`
 **Start:** `npm run start` (Next server)
-**Env vars:** as in §2
+**Env vars:** as in §2 (or paste the API key override via `/health` if Railway injects `secret:` references)
 **Health check:** `/` (Welcome page renders)
 
 > We deploy as a Node service (not “Static Sites”) to avoid any SSR/SSE surprises and to keep future flexibility.
@@ -383,7 +385,7 @@ README.md
 * [ ] **Dashboard**: shows **60-point cumulative** chart for current 30-min window, target line, and updates live via SSE.
 * [ ] **History tiles**: last 10 blocks with correct color coding.
 * [ ] **Toasts** for 80% alert (SSE `alert-80pct`) and network errors.
-* [ ] All network calls use `NEXT_PUBLIC_BACKEND_URL`; write calls pass the API key header in prototype.
+* [ ] All network calls use `NEXT_PUBLIC_BACKEND_URL`; write calls pass the API key header via env var or the `/health` override in prototype.
 * [ ] Works on Railway with the backend already deployed.
 
 ---
