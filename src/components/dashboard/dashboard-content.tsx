@@ -22,8 +22,6 @@ type DashboardContentProps = {
   initialHistory: HistoryBlock[];
 };
 
-type SimulatorRunRoute = `/sim/${string}/run`;
-
 export function DashboardContent({
   simulatorId,
   simulatorName,
@@ -74,7 +72,7 @@ export function DashboardContent({
             </p>
           </div>
           <Link
-            href={`/sim/${simulatorId}/run` as SimulatorRunRoute}
+            href={{ pathname: "/sim/[id]/run", params: { id: simulatorId } }}
             className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-cyan-600"
           >
             Open controls
