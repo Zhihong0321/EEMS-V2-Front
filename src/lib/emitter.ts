@@ -5,9 +5,9 @@ import { ingestReadings } from "./api";
 import type { TickIn } from "./types";
 import { useToast } from "@/components/ui/toast-provider";
 
-const AUTO_INTERVAL_MS = 15_000;
+const AUTO_INTERVAL_MS = 1_000;
 const MANUAL_INTERVAL_MS = 1_000;
-const AUTO_SAMPLE_SECONDS = 15;
+const AUTO_SAMPLE_SECONDS = 30;
 const MANUAL_SAMPLE_SECONDS = 30;
 const MAX_FAILURES = 3;
 

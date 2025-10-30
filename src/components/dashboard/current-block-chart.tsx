@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
   Line,
   LineChart,
@@ -28,25 +30,45 @@ type CurrentBlockChartProps = {
   block: LatestBlock | null;
   loading: boolean;
   targetKwh?: number;
+  mode: "accumulate" | "non-accumulate";
 };
 
 type ChartPoint = {
-  index: number;
-  minute: number;
+  ts: number;
   value: number;
 };
 
-function buildChartData(block: LatestBlock | null): ChartPoint[] {
+function buildChartData(block: LatestBlock | null, mode: "accumulate" | "non-accumulate"): { data: ChartPoint[]; startTs: number; endTs: number; binSeconds: number } {
   if (!block) {
-    return [];
+    return { data: [], startTs: 0, endTs: 0, binSeconds: 30 };
   }
+
+  const points = block.chart_bins?.points ?? [];
   const binSeconds = block.chart_bins?.bin_seconds ?? 30;
-  const binMinutes = binSeconds / 60;
-  return block.chart_bins?.points.map((value, index) => ({
-    index,
-    minute: Number(((index + 1) * binMinutes).toFixed(2)),
-    value
-  })) ?? [];
+  const startDate = new Date(block.block_start_local);
+  const startTs = startDate.getTime();
+  const endTs = startTs + 30 * 60 * 1000;
+  const binsPerMinute = Math.round(60 / binSeconds);
+
+  let data: ChartPoint[] = [];
+
+  if (mode === "accumulate") {
+    data = points.map((value, index) => ({
+      ts: startTs + (index + 1) * binSeconds * 1000,
+      value
+    }));
+  } else {
+    for (let i = 0; i < Math.ceil(points.length / binsPerMinute); i++) {
+      const binStartIdx = i * binsPerMinute;
+      const prev = binStartIdx === 0 ? 0 : points[binStartIdx - 1];
+      const binEndIdx = Math.min(binStartIdx + binsPerMinute - 1, points.length - 1);
+      const value = points[binEndIdx] - prev;
+      const ts = startTs + (binEndIdx + 1) * binSeconds * 1000;
+      data.push({ ts, value });
+    }
+  }
+
+  return { data, startTs, endTs, binSeconds };
 }
 
 function formatWindow(block: LatestBlock | null): string {
@@ -60,10 +82,19 @@ function formatWindow(block: LatestBlock | null): string {
   }
 }
 
-export function CurrentBlockChart({ block, loading, targetKwh }: CurrentBlockChartProps) {
-  const chartData = buildChartData(block);
+export function CurrentBlockChart({ block, loading, targetKwh, mode }: CurrentBlockChartProps) {
   const resolvedTarget = targetKwh ?? block?.target_kwh ?? 0;
   const windowLabel = formatWindow(block);
+  const { data: chartData, startTs, endTs, binSeconds } = buildChartData(block, mode);
+
+  const isAccumulate = mode === "accumulate";
+
+  const ChartComponent = isAccumulate ? LineChart : BarChart;
+  const DataElement = isAccumulate ? 
+    <Line type="monotone" dataKey="value" stroke="#22d3ee" strokeWidth={2} dot={false} isAnimationActive={false} /> :
+    <Bar dataKey="value" fill="#22d3ee" isAnimationActive={false} />;
+
+  const referenceLine = isAccumulate ? <ReferenceLine y={resolvedTarget} stroke="#f97316" strokeDasharray="6 6" /> : null;
 
   return (
     <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
@@ -87,12 +118,13 @@ export function CurrentBlockChart({ block, loading, targetKwh }: CurrentBlockCha
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ left: 12, right: 12, top: 12, bottom: 12 }}>
+            <ChartComponent data={chartData} margin={{ left: 12, right: 12, top: 12, bottom: 12 }}>
               <CartesianGrid strokeDasharray="4 4" stroke="#1f2937" />
               <XAxis
-                dataKey="minute"
+                dataKey="ts"
                 type="number"
-                tickFormatter={(value) => `${value}`}
+                domain={[startTs, endTs]}
+                tickFormatter={(ts) => windowFormatter.format(ts)}
                 stroke="#64748b"
                 tickLine={false}
               />
@@ -103,17 +135,10 @@ export function CurrentBlockChart({ block, loading, targetKwh }: CurrentBlockCha
                 width={60}
                 tickFormatter={(value) => tooltipFormatter.format(value as number)}
               />
-              <Tooltip content={<CustomTooltip target={resolvedTarget} />} />
-              <ReferenceLine y={resolvedTarget} stroke="#f97316" strokeDasharray="6 6" />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="#22d3ee"
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </LineChart>
+              <Tooltip content={<CustomTooltip target={resolvedTarget} mode={mode} binSeconds={binSeconds} />} />
+              {referenceLine}
+              {DataElement}
+            </ChartComponent>
           </ResponsiveContainer>
         )}
       </div>
@@ -129,20 +154,24 @@ type CustomTooltipProps = {
   payload?: { value: number }[];
   label?: number;
   target: number;
+  mode: "accumulate" | "non-accumulate";
+  binSeconds: number;
 };
 
-function CustomTooltip({ active, payload, label, target }: CustomTooltipProps) {
-  if (!active || !payload || payload.length === 0) {
+function CustomTooltip({ active, payload, label, target, mode, binSeconds }: CustomTooltipProps) {
+  if (!active || !payload || payload.length === 0 || !label) {
     return null;
   }
   const value = payload[0]?.value ?? 0;
-  const minutes = label ?? 0;
   const pct = target > 0 ? ((value / target) * 100).toFixed(1) : "0";
+  const isAccumulate = mode === "accumulate";
+  const labelText = isAccumulate ? "Accumulated" : `Usage per ${binSeconds >= 60 ? "minute" : "bin"}`;
+  const timeLabel = windowFormatter.format(label);
 
   return (
     <div className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 shadow-lg">
-      <p className="font-semibold">{tooltipFormatter.format(value)} kWh</p>
-      <p className="text-slate-400">{minutes.toFixed(1)} min · {pct}% of target</p>
+      <p className="font-semibold">{timeLabel} · {tooltipFormatter.format(value)} kWh</p>
+      <p className="text-slate-400">{labelText} · {pct}% of target</p>
     </div>
   );
 }
