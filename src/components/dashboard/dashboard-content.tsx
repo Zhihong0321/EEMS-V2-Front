@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import Link from "next/link";
 import { CurrentBlockChart } from "./current-block-chart";
 import { BlockHistoryTiles } from "./block-history-tiles";
@@ -42,13 +42,20 @@ export function DashboardContent({
     void refreshHistory();
   }, [refreshHistory]);
 
-  const { block, loading: blockLoading, connected, reconnecting, lastReadingTs } = useLatestBlock(
+  const { block, loading: blockLoading, connected, reconnecting, lastReadingTs, refresh: refreshBlock } = useLatestBlock(
     simulatorId,
     {
       onWindowChange: handleWindowChange
     },
     initialBlock
   );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshBlock();
+    }, 15000); // Poll every 15 seconds
+    return () => clearInterval(interval);
+  }, [refreshBlock]);
 
   const percentOfTarget = block?.percent_of_target ?? 0;
   const percentVariant = percentOfTarget > 100 ? "text-danger" : percentOfTarget >= 80 ? "text-warning" : "text-success";

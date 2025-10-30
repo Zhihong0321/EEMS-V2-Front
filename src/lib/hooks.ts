@@ -104,6 +104,25 @@ export function useLatestBlock(
   const alertRef = useRef(false);
   const reconnectToastId = useRef<string | null>(null);
 
+  const refresh = useCallback(async () => {
+    if (!simulatorId) return;
+    setState((prev) => ({ ...prev, loading: true }));
+    try {
+      const block = await fetchLatestBlock(simulatorId);
+      setState((prev) => ({ ...prev, block, loading: false, error: null }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load latest block";
+      setState((prev) => ({ ...prev, loading: false, error: message }));
+      push({
+        title: "Unable to load latest block",
+        description: message,
+        variant: "error"
+      });
+    } finally {
+      setState((prev) => ({ ...prev, loading: false }));
+    }
+  }, [simulatorId, push]);
+
   useEffect(() => {
     if (!simulatorId) {
       setState((prev) => ({ ...prev, block: null, loading: false, error: null, connected: false, reconnecting: false }));
@@ -259,7 +278,7 @@ export function useLatestBlock(
     };
   }, [dismiss, initialBlock, onAlert80pct, onWindowChange, push, simulatorId]);
 
-  return state;
+  return { ...state, refresh };
 }
 
 export function useBlockHistory(simulatorId: string | null, limit = 10, initialHistory: HistoryBlock[] = []) {
