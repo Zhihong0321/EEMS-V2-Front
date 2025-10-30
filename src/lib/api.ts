@@ -108,12 +108,12 @@ async function requestJson<T>(path: string, init?: RequestInit, options: Request
   let attempt = 0;
 
   // Always ensure we use credentialsless fetch
+  const mergedHeaders = new Headers(init?.headers);
+  mergedHeaders.set("Accept", "application/json");
+
   const requestInit: RequestInit = {
     ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init?.headers ?? {})
-    }
+    headers: mergedHeaders
   };
 
   while (true) {
