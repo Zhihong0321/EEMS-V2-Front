@@ -40,7 +40,9 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
     async (input: CreateSimulatorInput) => {
       try {
         const simulator = await createSimulator(input);
-        setSimulators((prev) => [simulator, ...prev]);
+        // After a successful create, refresh from the server to ensure we show
+        // the persisted record and any server-side defaults/derived fields.
+        await refresh();
         push({
           title: "Simulator created",
           description: `${simulator.name} is ready to run.`,
@@ -48,7 +50,12 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
         });
         return simulator;
       } catch (error) {
+        // Surface backend validation messages (e.g., 422) clearly in the UI and console.
         const message = error instanceof Error ? error.message : "Failed to create simulator";
+        // Log full error object for precise debugging (payload may contain field-level details)
+        // without disrupting the user experience.
+        // eslint-disable-next-line no-console
+        console.error("Create simulator failed", error);
         push({
           title: "Create simulator failed",
           description: message,
@@ -57,7 +64,7 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
         throw error;
       }
     },
-    [push]
+    [push, refresh]
   );
 
   return useMemo(
