@@ -44,7 +44,7 @@ async function parseJson<T>(response: Response): Promise<T> {
 }
 
 async function createApiError(response: Response): Promise<ApiError> {
-  let payload: ApiErrorPayload | undefined;
+  let payload: (ApiErrorPayload & { detail?: unknown }) | undefined;
   try {
     payload = await response.clone().json();
   } catch {
@@ -62,12 +62,32 @@ async function createApiError(response: Response): Promise<ApiError> {
     }
   }
 
-  const message =
-    payload?.error?.message ??
-    payload?.message ??
-    response.statusText ??
-    `Request failed with status ${response.status}`;
-  return new ApiError(message, response.status, payload?.error?.code, payload?.error?.details);
+  // Prefer explicit error message/code if provided by backend
+  let message = payload?.error?.message ?? payload?.message ?? response.statusText ?? `Request failed with status ${response.status}`;
+  let code = payload?.error?.code;
+  let details = payload?.error?.details;
+
+  // FastAPI-style validation errors: { detail: [...] }
+  // Extract and flatten messages to surface meaningful feedback in the UI.
+  if (payload && payload.detail) {
+    details = payload.detail;
+    try {
+      if (Array.isArray(payload.detail)) {
+        const msgs = (payload.detail as Array<{ msg?: string; loc?: unknown; detail?: string }>).
+          map((d) => d?.msg || d?.detail || "Validation error")
+          .filter(Boolean);
+        if (msgs.length > 0) {
+          message = msgs.join("; ");
+        }
+      } else if (typeof payload.detail === "string") {
+        message = payload.detail;
+      }
+    } catch {
+      // fallback to default message
+    }
+  }
+
+  return new ApiError(message, response.status, code, details);
 }
 
 function shouldRetry(status: number) {
