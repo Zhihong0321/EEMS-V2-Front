@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import DashboardContent from "./dashboard-content";
+import { DashboardContent } from "./dashboard-content";
 import type { HistoryBlock, LatestBlock, Simulator } from "@/lib/types";
 
 type InitialDataMap = Record<
