@@ -139,13 +139,13 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
                 </div>
                 <div className="mt-6 flex gap-3">
                   <Link
-                    href={{ pathname: "/sim/[id]", query: { id: sim.id } }}
+                    href={`/${sim.id}`}
                     className="inline-flex flex-1 items-center justify-center rounded-md border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-primary hover:text-white"
                   >
                     Open dashboard
                   </Link>
                   <Link
-                    href={{ pathname: "/[id]/run", query: { id: sim.id } }}
+                    href={`/${sim.id}/run`}
                     className="inline-flex flex-1 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-cyan-600"
                   >
                     Run simulator
