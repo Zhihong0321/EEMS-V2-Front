@@ -7,7 +7,8 @@ import { useToast } from "@/components/ui/toast-provider";
 
 const AUTO_INTERVAL_MS = 15_000;
 const MANUAL_INTERVAL_MS = 1_000;
-const SAMPLE_SECONDS = 15;
+const AUTO_SAMPLE_SECONDS = 15;
+const MANUAL_SAMPLE_SECONDS = 30;
 const MAX_FAILURES = 3;
 
 export type EmitterState = {
@@ -127,7 +128,7 @@ export function useAutoEmitter(simulatorId: string | null, baseKw: number, volat
     const powerKw = Math.max(0, baseKw * (1 + randomDelta));
     return {
       power_kw: Number(powerKw.toFixed(3)),
-      sample_seconds: SAMPLE_SECONDS,
+      sample_seconds: AUTO_SAMPLE_SECONDS,
       device_ts: new Date().toISOString()
     };
   }, [baseKw, volatilityPct]);
@@ -140,7 +141,7 @@ export function useManualEmitter(simulatorId: string | null, getPowerKw: () => n
     const powerKw = Math.max(0, getPowerKw());
     return {
       power_kw: Number(powerKw.toFixed(3)),
-      sample_seconds: SAMPLE_SECONDS,
+      sample_seconds: MANUAL_SAMPLE_SECONDS,
       device_ts: new Date().toISOString()
     };
   }, [getPowerKw]);
