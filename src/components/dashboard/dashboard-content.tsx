@@ -51,6 +51,12 @@ export function DashboardContent({
   );
 
   useEffect(() => {
+    if (lastReadingTs && chartMode === "non-accumulate") {
+      refreshBlock();
+    }
+  }, [lastReadingTs, refreshBlock, chartMode]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
       refreshBlock();
     }, 15000); // Poll every 15 seconds
@@ -96,7 +102,7 @@ export function DashboardContent({
             className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
           >
             <option value="accumulate">Accumulate</option>
-            <option value="non-accumulate">Non-Accumulate (Per Minute)</option>
+            <option value="non-accumulate">Non-Accumulate (Per 30s)</option>
           </select>
         </div>
       </header>

@@ -103,7 +103,10 @@ type RequestOptions = {
 };
 
 async function requestJson<T>(path: string, init?: RequestInit, options: RequestOptions = {}): Promise<T> {
-  const url = buildUrl(path);
+  let url = buildUrl(path);
+  if (typeof window === 'undefined') {
+    url = `http://localhost${url}`;
+  }
   const retryDelays = options.retryDelays ?? [];
   let attempt = 0;
 

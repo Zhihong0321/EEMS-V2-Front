@@ -58,14 +58,10 @@ function buildChartData(block: LatestBlock | null, mode: "accumulate" | "non-acc
       value
     }));
   } else {
-    for (let i = 0; i < Math.ceil(points.length / binsPerMinute); i++) {
-      const binStartIdx = i * binsPerMinute;
-      const prev = binStartIdx === 0 ? 0 : points[binStartIdx - 1];
-      const binEndIdx = Math.min(binStartIdx + binsPerMinute - 1, points.length - 1);
-      const value = points[binEndIdx] - prev;
-      const ts = startTs + (binEndIdx + 1) * binSeconds * 1000;
-      data.push({ ts, value });
-    }
+    data = points.map((value, index) => ({
+      ts: startTs + (index + 1) * binSeconds * 1000,
+      value: value - (index === 0 ? 0 : points[index - 1])
+    }));
   }
 
   return { data, startTs, endTs, binSeconds };
@@ -165,7 +161,7 @@ function CustomTooltip({ active, payload, label, target, mode, binSeconds }: Cus
   const value = payload[0]?.value ?? 0;
   const pct = target > 0 ? ((value / target) * 100).toFixed(1) : "0";
   const isAccumulate = mode === "accumulate";
-  const labelText = isAccumulate ? "Accumulated" : `Usage per ${binSeconds >= 60 ? "minute" : "bin"}`;
+  const labelText = isAccumulate ? "Accumulated" : `Usage per ${binSeconds}s`;
   const timeLabel = windowFormatter.format(label);
 
   return (
