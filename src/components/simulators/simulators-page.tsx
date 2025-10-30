@@ -145,7 +145,7 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
                     Open dashboard
                   </Link>
                   <Link
-                    href={{ pathname: "/sim/[id]/run", query: { id: sim.id } }}
+                    href={{ pathname: "/[id]/run", query: { id: sim.id } }}
                     className="inline-flex flex-1 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-cyan-600"
                   >
                     Run simulator
