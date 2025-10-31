@@ -75,7 +75,7 @@ function buildChartData(
     }
   }
 
-  if (!blockIsCurrent) {
+  if (!blockIsCurrent || !block) {
     // If block is not current or doesn't exist, return an empty chart for the current window
     const data = Array(60).fill(null).map((_, index) => ({
       ts: startTs + (index + 1) * 30 * 1000,
@@ -84,7 +84,7 @@ function buildChartData(
     return { data, startTs, endTs, binSeconds: 30 };
   }
 
-  // Original binned logic
+  // Original binned logic - block is guaranteed to be non-null here
   const points = block.chart_bins?.points ?? [];
   const binSeconds = block.chart_bins?.bin_seconds ?? 30;
   const numPoints = Math.floor((30 * 60) / binSeconds);
