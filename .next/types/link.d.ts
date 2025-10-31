@@ -33,8 +33,8 @@ declare namespace __next_route_internal_types__ {
     | `/dashboard`
     | `/health`
   type DynamicRoutes<T extends string = string> = 
-    | `/${SafeSlug<T>}`
     | `/${SafeSlug<T>}/run`
+    | `/${SafeSlug<T>}`
     | `/api/bridge/${CatchAllSlug<T>}`
 
   type RouteImpl<T> = 

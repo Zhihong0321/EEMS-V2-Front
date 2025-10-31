@@ -102,7 +102,13 @@ export function CurrentBlockChart({ block, loading, targetKwh, mode }: Omit<Curr
   const resolvedTarget = targetKwh ?? block?.target_kwh ?? 0;
 
   const currentWindow = (() => {
-    // Always calculate the 30-minute block based on the current system time.
+    // If a block is provided, use its start time to define the window.
+    if (block) {
+      const start = new Date((block as LatestBlock).block_start_local);
+      const end = new Date(start.getTime() + 30 * 60 * 1000);
+      return { startTs: start.getTime(), endTs: end.getTime() };
+    }
+    // Fallback for when there is no block data yet, based on real time.
     const now = new Date();
     const minutes = now.getMinutes();
     const roundedMinutes = Math.floor(minutes / 30) * 30;
