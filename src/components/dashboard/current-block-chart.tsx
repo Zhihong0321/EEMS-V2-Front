@@ -31,6 +31,7 @@ type CurrentBlockChartProps = {
   loading: boolean;
   targetKwh?: number;
   mode: "accumulate" | "non-accumulate";
+  rawReadings?: { ts: number; power_kw: number; sample_seconds: number }[];
 };
 
 type ChartPoint = {
@@ -38,17 +39,32 @@ type ChartPoint = {
   value: number;
 };
 
-function buildChartData(block: LatestBlock | null, mode: "accumulate" | "non-accumulate"): { data: ChartPoint[]; startTs: number; endTs: number; binSeconds: number } {
+function buildChartData(
+  block: LatestBlock | null,
+  mode: "accumulate" | "non-accumulate",
+  rawReadings: { ts: number; power_kw: number; sample_seconds: number }[] = []
+): { data: ChartPoint[]; startTs: number; endTs: number; binSeconds: number } {
   if (!block) {
     return { data: [], startTs: 0, endTs: 0, binSeconds: 30 };
   }
 
+  if (mode !== "accumulate" && rawReadings.length > 0) {
+    // Use raw readings for non-accumulate mode
+    const data = rawReadings.map((reading) => ({
+      ts: reading.ts,
+      value: reading.power_kw,
+    }));
+    const startTs = Math.min(...data.map(d => d.ts));
+    const endTs = Math.max(...data.map(d => d.ts));
+    return { data, startTs, endTs, binSeconds: 1 }; // Arbitrary binSeconds since no binning
+  }
+
+  // Original binned logic
   const points = block.chart_bins?.points ?? [];
   const binSeconds = block.chart_bins?.bin_seconds ?? 30;
   const startDate = new Date(block.block_start_local);
   const startTs = startDate.getTime();
   const endTs = startTs + 30 * 60 * 1000;
-  const binsPerMinute = Math.round(60 / binSeconds);
 
   let data: ChartPoint[] = [];
 
@@ -81,7 +97,7 @@ function formatWindow(block: LatestBlock | null): string {
 export function CurrentBlockChart({ block, loading, targetKwh, mode }: CurrentBlockChartProps) {
   const resolvedTarget = targetKwh ?? block?.target_kwh ?? 0;
   const windowLabel = formatWindow(block);
-  const { data: chartData, startTs, endTs, binSeconds } = buildChartData(block, mode);
+  const { data: chartData, startTs, endTs, binSeconds } = buildChartData(block, mode, rawReadings);
 
   const isAccumulate = mode === "accumulate";
 
