@@ -179,11 +179,12 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
         </div>
       </header>
       <div className="h-72 w-full">
-        {loading ? (
+        {loading && !block ? (
+          // Only show loading on initial load (when block is null)
           <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40">
             <span className="text-sm text-slate-500">Loading chart…</span>
           </div>
-        ) : chartData.length === 0 ? (
+        ) : chartData.length === 0 || chartData.every(p => p.value === 0) ? (
           <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40">
             <span className="text-sm text-slate-500">No readings for this block yet.</span>
           </div>

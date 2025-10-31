@@ -107,7 +107,9 @@ export function useLatestBlock(
 
   const refresh = useCallback(async () => {
     if (!simulatorId) return;
-    setState((prev) => ({ ...prev, loading: true }));
+    // Only show loading if we don't have block data yet (initial load)
+    // Don't show loading during refreshes to avoid flickering
+    setState((prev) => ({ ...prev, loading: prev.block == null }));
     try {
       const block = await fetchLatestBlock(simulatorId);
       setState((prev) => ({ ...prev, block, loading: false, error: null }));
