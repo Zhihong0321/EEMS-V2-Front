@@ -51,6 +51,7 @@ function buildChartData(
   targetPeakKwh?: number
 ): { data: ChartPoint[]; startTs: number; endTs: number; binSeconds: number } {
   // Simple: trust backend block data completely
+  // Chart will always show the latest 30min block from stored signals (even if future)
   if (!block || !block.block_start_local) {
     // Fallback: return empty chart with current time window
     const now = new Date();
@@ -63,7 +64,7 @@ function buildChartData(
     return { data, startTs, endTs, binSeconds: 30 };
   }
 
-  // Use backend block data - simple and reliable
+  // Use backend block data - always show latest block (simple and reliable)
   const startTs = new Date(block.block_start_local).getTime();
   const endTs = startTs + 30 * 60 * 1000;
   const points = block.chart_bins?.points ?? [];

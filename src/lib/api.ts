@@ -268,23 +268,13 @@ export async function deleteFutureReadings(simulatorId: string): Promise<void> {
 
 /**
  * Get the last reading timestamp for a simulator.
- * Returns the timestamp of the last reading, or null if no readings exist or if the data is in the future.
+ * Returns the timestamp of the last reading, or null if no readings exist.
+ * Always returns the latest reading timestamp regardless of whether it's past or future.
  */
 export async function getLastReadingTimestamp(simulatorId: string): Promise<string | null> {
   try {
     // Fetch latest block - if it has data, we can infer the last reading timestamp
     const block = await fetchLatestBlock(simulatorId);
-    const now = new Date();
-    
-    // Check if block is in the future - if so, ignore it (old fast-forward data)
-    if (block.block_start_local) {
-      const blockStart = new Date(block.block_start_local);
-      const timeDiff = blockStart.getTime() - now.getTime();
-      // If block is more than 30 minutes in the future, it's likely old fast-forward data
-      if (timeDiff > 30 * 60 * 1000) {
-        return null; // Ignore future blocks
-      }
-    }
     
     // If block has data points, estimate last reading time from block start + bin duration
     if (block.chart_bins?.points && block.chart_bins.points.length > 0) {
@@ -293,16 +283,10 @@ export async function getLastReadingTimestamp(simulatorId: string): Promise<stri
       const numPoints = block.chart_bins.points.length;
       // Last reading would be approximately at block start + (numPoints * binSeconds)
       const lastReadingTime = new Date(blockStart.getTime() + numPoints * binSeconds * 1000);
-      
-      // Only return if the last reading is in the past (not future)
-      const readingTimeDiff = now.getTime() - lastReadingTime.getTime();
-      if (readingTimeDiff > 0 && readingTimeDiff < 60 * 60 * 1000) {
-        // Last reading is in the past and not too old (within last hour)
-        return lastReadingTime.toISOString();
-      }
+      return lastReadingTime.toISOString();
     }
     
-    // If no data or data is in future, return null (will start from current time)
+    // If no data, return null (will start from current time)
     return null;
   } catch (error) {
     // If fetch fails, return null (will start from current time)

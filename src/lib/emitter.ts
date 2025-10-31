@@ -145,14 +145,14 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick, fastForwardEnabled
 
     // Get last reading timestamp and continue from there
     // This creates continuous simulated data and prevents chart gaps
+    // ALWAYS continue from latest reading timestamp (even if it's in the future)
     try {
       const lastReadingTs = await getLastReadingTimestamp(simulatorId);
       if (lastReadingTs && fastForwardEnabled) {
-        // Continue simulation from last reading timestamp
-        // getLastReadingTimestamp already validates it's in the past, so safe to use
+        // Continue simulation from last reading timestamp (no matter if past or future)
         lastSimulatedTsRef.current = new Date(lastReadingTs);
       } else if (fastForwardEnabled) {
-        // No valid last reading or fast-forward disabled, start from current time
+        // No last reading found, start from current time
         lastSimulatedTsRef.current = new Date();
       }
       // If fast-forward disabled, lastSimulatedTsRef stays null (will use current time in sendTick)
