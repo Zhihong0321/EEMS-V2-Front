@@ -111,6 +111,16 @@ export function CurrentBlockChart({ block, loading, targetKwh, mode, rawReadings
   const resolvedTarget = targetKwh ?? block?.target_kwh ?? 0;
 
   const currentWindow = (() => {
+    if (mode === "non-accumulate" && rawReadings && rawReadings.length > 0) {
+      const latestReadingTime = new Date(Math.max(...rawReadings.map(r => r.ts)));
+      const minutes = latestReadingTime.getMinutes();
+      const startMinutes = minutes < 30 ? 0 : 30;
+      const start = new Date(latestReadingTime);
+      start.setMinutes(startMinutes, 0, 0);
+      const end = new Date(start);
+      end.setMinutes(start.getMinutes() + 30);
+      return { startTs: start.getTime(), endTs: end.getTime() };
+    }
     if (block) {
       const start = new Date(block.block_start_local);
       const end = new Date(start.getTime() + 30 * 60 * 1000);
