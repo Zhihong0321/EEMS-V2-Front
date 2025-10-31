@@ -42,12 +42,16 @@ type ChartPoint = {
 function buildChartData(
   block: LatestBlock | null,
   mode: "accumulate" | "non-accumulate",
-  rawReadings: { ts: number; power_kw: number; sample_seconds: number }[] = []
+  rawReadings: { ts: number; power_kw: number; sample_seconds: number }[] = [],
+  currentWindow: { startTs: number; endTs: number }
 ): { data: ChartPoint[]; startTs: number; endTs: number; binSeconds: number } {
-  if (!block) {
-    const now = new Date();
-    const startTs = now.getTime();
-    const endTs = startTs + 30 * 60 * 1000;
+  const { startTs, endTs } = currentWindow;
+
+  // Block is considered valid only if it exists and its start time matches the current window's start time
+  const blockIsCurrent = block && new Date(block.block_start_local).getTime() === startTs;
+
+  if (!blockIsCurrent) {
+    // If block is not current or doesn't exist, return an empty chart for the current window
     const data = Array(60).fill(null).map((_, index) => ({
       ts: startTs + (index + 1) * 30 * 1000,
       value: 0,
@@ -61,17 +65,12 @@ function buildChartData(
       ts: reading.ts,
       value: reading.power_kw,
     }));
-    const startTs = Math.min(...data.map(d => d.ts));
-    const endTs = Math.max(...data.map(d => d.ts));
     return { data, startTs, endTs, binSeconds: 1 }; // Arbitrary binSeconds since no binning
   }
 
   // Original binned logic
   const points = block.chart_bins?.points ?? [];
   const binSeconds = block.chart_bins?.bin_seconds ?? 30;
-  const startDate = new Date(block.block_start_local);
-  const startTs = startDate.getTime();
-  const endTs = startTs + 30 * 60 * 1000;
   const numPoints = Math.floor((30 * 60) / binSeconds);
 
   let data: ChartPoint[] = [];
@@ -98,21 +97,49 @@ function buildChartData(
   return { data: paddedData, startTs, endTs, binSeconds };
 }
 
-function formatWindow(block: LatestBlock | null): string {
-  if (!block) return "—";
+function formatWindow(startTs: number, endTs: number): string {
   try {
-    const start = new Date(block.block_start_local);
-    const end = new Date(start.getTime() + 30 * 60 * 1000);
+    const start = new Date(startTs);
+    const end = new Date(endTs);
     return `${windowFormatter.format(start)} – ${windowFormatter.format(end)}`;
   } catch {
-    return block.block_start_local;
+    return "Invalid time range";
   }
 }
 
+import { useEffect, useState } from "react";
+
+function getCurrentWindow(): { startTs: number; endTs: number } {
+  const now = new Date();
+  const minutes = now.getMinutes();
+  const startMinutes = minutes < 30 ? 0 : 30;
+  
+  const start = new Date(now);
+  start.setMinutes(startMinutes, 0, 0);
+  
+  const end = new Date(start);
+  end.setMinutes(start.getMinutes() + 30);
+  
+  return { startTs: start.getTime(), endTs: end.getTime() };
+}
+
 export function CurrentBlockChart({ block, loading, targetKwh, mode, rawReadings }: CurrentBlockChartProps) {
+  const [currentWindow, setCurrentWindow] = useState(getCurrentWindow());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newWindow = getCurrentWindow();
+      if (newWindow.startTs !== currentWindow.startTs) {
+        setCurrentWindow(newWindow);
+      }
+    }, 1000); // Check every second
+
+    return () => clearInterval(interval);
+  }, [currentWindow]);
+
   const resolvedTarget = targetKwh ?? block?.target_kwh ?? 0;
-  const windowLabel = formatWindow(block);
-  const { data: chartData, startTs, endTs, binSeconds } = buildChartData(block, mode, rawReadings);
+  const windowLabel = formatWindow(currentWindow.startTs, currentWindow.endTs);
+  const { data: chartData, startTs, endTs, binSeconds } = buildChartData(block, mode, rawReadings, currentWindow);
 
   const isAccumulate = mode === "accumulate";
 
