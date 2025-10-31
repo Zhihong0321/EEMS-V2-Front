@@ -107,37 +107,26 @@ function formatWindow(startTs: number, endTs: number): string {
   }
 }
 
-import { useEffect, useState } from "react";
-
-function getCurrentWindow(): { startTs: number; endTs: number } {
-  const now = new Date();
-  const minutes = now.getMinutes();
-  const startMinutes = minutes < 30 ? 0 : 30;
-  
-  const start = new Date(now);
-  start.setMinutes(startMinutes, 0, 0);
-  
-  const end = new Date(start);
-  end.setMinutes(start.getMinutes() + 30);
-  
-  return { startTs: start.getTime(), endTs: end.getTime() };
-}
-
 export function CurrentBlockChart({ block, loading, targetKwh, mode, rawReadings }: CurrentBlockChartProps) {
-  const [currentWindow, setCurrentWindow] = useState(getCurrentWindow());
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const newWindow = getCurrentWindow();
-      if (newWindow.startTs !== currentWindow.startTs) {
-        setCurrentWindow(newWindow);
-      }
-    }, 1000); // Check every second
-
-    return () => clearInterval(interval);
-  }, [currentWindow]);
-
   const resolvedTarget = targetKwh ?? block?.target_kwh ?? 0;
+
+  const currentWindow = (() => {
+    if (block) {
+      const start = new Date(block.block_start_local);
+      const end = new Date(start.getTime() + 30 * 60 * 1000);
+      return { startTs: start.getTime(), endTs: end.getTime() };
+    }
+    // Fallback for when there is no block data yet, based on real time.
+    const now = new Date();
+    const minutes = now.getMinutes();
+    const startMinutes = minutes < 30 ? 0 : 30;
+    const start = new Date(now);
+    start.setMinutes(startMinutes, 0, 0);
+    const end = new Date(start);
+    end.setMinutes(start.getMinutes() + 30);
+    return { startTs: start.getTime(), endTs: end.getTime() };
+  })();
+
   const windowLabel = formatWindow(currentWindow.startTs, currentWindow.endTs);
   const { data: chartData, startTs, endTs, binSeconds } = buildChartData(block, mode, rawReadings, currentWindow);
 
