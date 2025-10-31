@@ -53,6 +53,17 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick }: UseEmitterOption
       failureRef.current = 0;
       setSentCount((prev) => prev + 1);
       setLastSentAt(new Date().toISOString());
+
+      // Store the sent tick in localStorage for raw chart data
+      const storageKey = `recent_ticks_${simulatorId}`;
+      const existingTicks = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      existingTicks.push({ ts: Date.now(), ...tick });
+      // Keep only last 180 ticks (for 30-min block at 10s intervals, but generous)
+      if (existingTicks.length > 180) {
+        existingTicks.shift();
+      }
+      localStorage.setItem(storageKey, JSON.stringify(existingTicks));
+
     } catch (error) {
       failureRef.current += 1;
       const message = error instanceof Error ? error.message : "Failed to deliver reading";

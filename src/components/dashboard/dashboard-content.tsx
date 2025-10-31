@@ -42,7 +42,7 @@ export function DashboardContent({
     void refreshHistory();
   }, [refreshHistory]);
 
-  const { block, loading: blockLoading, connected, reconnecting, lastReadingTs, refresh: refreshBlock } = useLatestBlock(
+  const { block, loading: blockLoading, connected, reconnecting, lastReadingTs, rawReadings, refresh: refreshBlock } = useLatestBlock(
     simulatorId,
     {
       onWindowChange: handleWindowChange
@@ -102,17 +102,16 @@ export function DashboardContent({
             className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
           >
             <option value="accumulate">Accumulate</option>
-            <option value="non-accumulate">Non-Accumulate (Per 30s)</option>
+            <option value="non-accumulate">Non-Accumulate (Raw Readings)</option>
           </select>
         </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
         <CurrentBlockChart 
-          block={block} 
-          loading={blockLoading} 
-          targetKwh={targetKwh} 
-          mode={chartMode} 
+          block={block ?? { start_ts: new Date().toISOString(), accumulated_kwh: 0, percent_of_target: 0, chart_bins: { bin_seconds: 30, points: [] } }} 
+          accumulate={chartMode === "accumulate"}
+          rawReadings={chartMode === "non-accumulate" ? rawReadings : undefined}
         />
         <div className="flex flex-col gap-6">
           <LiveStatus

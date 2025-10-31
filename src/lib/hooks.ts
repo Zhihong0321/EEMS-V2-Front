@@ -85,6 +85,7 @@ type LatestBlockState = {
   connected: boolean;
   reconnecting: boolean;
   lastReadingTs?: string;
+  rawReadings: { ts: number; power_kw: number; sample_seconds: number }[];
 };
 
 export function useLatestBlock(
@@ -99,7 +100,8 @@ export function useLatestBlock(
     loading: !initialBlock && !!simulatorId,
     error: null,
     connected: false,
-    reconnecting: false
+    reconnecting: false,
+    rawReadings: []
   });
   const alertRef = useRef(false);
   const reconnectToastId = useRef<string | null>(null);
@@ -278,7 +280,44 @@ export function useLatestBlock(
     };
   }, [dismiss, initialBlock, onAlert80pct, onWindowChange, push, simulatorId]);
 
-  return { ...state, refresh };
+  // Load raw readings from localStorage
+  const loadRawReadings = useCallback(() => {
+    if (!simulatorId) return;
+    const storageKey = `recent_ticks_${simulatorId}`;
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      const ticks = JSON.parse(stored);
+      const readings = ticks.map((tick: any) => ({
+        ts: tick.ts,
+        power_kw: tick.power_kw,
+        sample_seconds: tick.sample_seconds
+      }));
+      setState(prev => ({ ...prev, rawReadings: readings }));
+    }
+  }, [simulatorId]);
+
+  // Initial load
+  useEffect(() => {
+    loadRawReadings();
+  }, [loadRawReadings]);
+
+  // Poll every 1s for updates
+  useEffect(() => {
+    if (!state.connected) return;
+    const interval = setInterval(loadRawReadings, 1000);
+    return () => clearInterval(interval);
+  }, [state.connected, loadRawReadings]);
+
+  return {
+    block: state.block,
+    loading: state.loading,
+    error: state.error,
+    connected: state.connected,
+    reconnecting: state.reconnecting,
+    lastReadingTs: state.lastReadingTs,
+    rawReadings: state.rawReadings,
+    refresh: refreshBlock
+  };
 }
 
 export function useBlockHistory(simulatorId: string | null, limit = 10, initialHistory: HistoryBlock[] = []) {
