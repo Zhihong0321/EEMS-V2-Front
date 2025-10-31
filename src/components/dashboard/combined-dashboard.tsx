@@ -40,6 +40,7 @@ export function CombinedDashboard({
   const [volatility, setVolatility] = useState(12);
   const [sliderValue, setSliderValue] = useState(0.5);
   const [maxKw, setMaxKw] = useState(800);
+  const [targetPeakKwh, setTargetPeakKwh] = useState(100); // Targeted peak usage per 30min block
 
   const manualPowerKw = useMemo(() => sliderValue * maxKw, [sliderValue, maxKw]);
 
@@ -137,8 +138,8 @@ export function CombinedDashboard({
         </div>
       </header>
 
-      {/* Chart Mode Toggle */}
-      <div className="flex items-center gap-4">
+      {/* Chart Mode Toggle and Peak Target */}
+      <div className="flex items-center gap-4 flex-wrap">
         <label className="text-sm text-slate-300">Chart Mode:</label>
         <select
           value={chartMode}
@@ -146,8 +147,21 @@ export function CombinedDashboard({
           className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
         >
           <option value="accumulate">Accumulate</option>
-          <option value="non-accumulate">Non-Accumulate (Raw Readings)</option>
+          <option value="non-accumulate">Non-Accumulate (Peak Usage)</option>
         </select>
+        {chartMode === "non-accumulate" && (
+          <>
+            <label className="text-sm text-slate-300 ml-4">Target Peak Usage (kWh per 30min):</label>
+            <input
+              type="number"
+              value={targetPeakKwh}
+              onChange={(e) => setTargetPeakKwh(parseFloat(e.target.value) || 100)}
+              min="0"
+              step="0.1"
+              className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 w-32"
+            />
+          </>
+        )}
       </div>
 
       {/* Dashboard Section (Top) */}
@@ -166,6 +180,7 @@ export function CombinedDashboard({
           }} 
           loading={blockLoading}
           targetKwh={targetKwh}
+          targetPeakKwh={chartMode === "non-accumulate" ? targetPeakKwh : undefined}
           mode={chartMode}
           lastReadingTs={effectiveLastReadingTs}
         />
