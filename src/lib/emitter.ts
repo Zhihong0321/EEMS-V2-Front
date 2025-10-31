@@ -61,10 +61,9 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick, fastForwardEnabled
       
       // Initialize or advance simulated timestamp
       if (!lastSimulatedTsRef.current) {
-        // Start from current time or midnight if this is the first tick
-        const midnight = new Date(now);
-        midnight.setHours(0, 0, 0, 0);
-        lastSimulatedTsRef.current = midnight;
+        // Start from current real-world time (not midnight) so readings appear immediately
+        // This ensures the chart shows the current block based on the reading timestamps
+        lastSimulatedTsRef.current = new Date(now);
       } else {
         // Advance by FAST_FORWARD_MULTIPLIER seconds per real second
         // Since we're sending every intervalMs, advance by that much simulated time
