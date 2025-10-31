@@ -94,7 +94,7 @@ function formatWindow(block: LatestBlock | null): string {
   }
 }
 
-export function CurrentBlockChart({ block, loading, targetKwh, mode }: CurrentBlockChartProps) {
+export function CurrentBlockChart({ block, loading, targetKwh, mode, rawReadings }: CurrentBlockChartProps) {
   const resolvedTarget = targetKwh ?? block?.target_kwh ?? 0;
   const windowLabel = formatWindow(block);
   const { data: chartData, startTs, endTs, binSeconds } = buildChartData(block, mode, rawReadings);
@@ -185,103 +185,5 @@ function CustomTooltip({ active, payload, label, target, mode, binSeconds }: Cus
       <p className="font-semibold">{timeLabel} · {tooltipFormatter.format(value)} kWh</p>
       <p className="text-slate-400">{labelText} · {pct}% of target</p>
     </div>
-  );
-}
-
-type CurrentBlockChartProps = {
-  block: LatestBlock;
-  accumulate: boolean;
-  rawReadings?: { ts: number; power_kw: number; sample_seconds: number }[];
-};
-
-function buildChartData(
-  block: LatestBlock,
-  accumulate: boolean,
-  rawReadings: { ts: number; power_kw: number; sample_seconds: number }[] = []
-) {
-  if (!accumulate && rawReadings.length > 0) {
-    // Use raw readings for non-accumulate mode
-    return rawReadings.map((reading) => ({
-      x: new Date(reading.ts).toLocaleTimeString(),
-      y: reading.power_kw,
-    }));
-  }
-
-  const binSeconds = block.chart_bins?.bin_seconds ?? 30;
-  const points = block.chart_bins?.points ?? [];
-
-  let accumulated = 0;
-  return points.map((point, index) => {
-    const value = accumulate ? (accumulated += point) : point;
-    const time = new Date(block.start_ts).getTime() + index * binSeconds * 1000;
-    return {
-      x: new Date(time).toLocaleTimeString(),
-      y: value,
-    };
-  });
-}
-
-export function CurrentBlockChart({ block, accumulate, rawReadings }: CurrentBlockChartProps) {
-  const data = useMemo(() => buildChartData(block, accumulate, rawReadings), [block, accumulate, rawReadings]);
-
-  const isAccumulate = mode === "accumulate";
-
-  const ChartComponent = isAccumulate ? LineChart : BarChart;
-  const DataElement = isAccumulate ? 
-    <Line type="monotone" dataKey="value" stroke="#22d3ee" strokeWidth={2} dot={false} isAnimationActive={false} /> :
-    <Bar dataKey="value" fill="#22d3ee" isAnimationActive={false} />;
-
-  const referenceLine = isAccumulate ? <ReferenceLine y={resolvedTarget} stroke="#f97316" strokeDasharray="6 6" /> : null;
-
-  return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold text-white">Current 30-minute block</h2>
-          <p className="text-sm text-slate-400">Window {windowLabel}</p>
-        </div>
-        <div className="rounded-md border border-slate-800 px-4 py-2 text-xs text-slate-400">
-          Target {resolvedTarget.toFixed(1)} kWh · Accumulated {block?.accumulated_kwh.toFixed(2) ?? "—"} kWh
-        </div>
-      </header>
-      <div className="h-72 w-full">
-        {loading ? (
-          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40">
-            <span className="text-sm text-slate-500">Loading chart…</span>
-          </div>
-        ) : chartData.length === 0 ? (
-          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40">
-            <span className="text-sm text-slate-500">No readings for this block yet.</span>
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <ChartComponent data={chartData} margin={{ left: 12, right: 12, top: 12, bottom: 12 }}>
-              <CartesianGrid strokeDasharray="4 4" stroke="#1f2937" />
-              <XAxis
-                dataKey="ts"
-                type="number"
-                domain={[startTs, endTs]}
-                tickFormatter={(ts) => windowFormatter.format(ts)}
-                stroke="#64748b"
-                tickLine={false}
-              />
-              <YAxis
-                dataKey="value"
-                stroke="#64748b"
-                tickLine={false}
-                width={60}
-                tickFormatter={(value) => tooltipFormatter.format(value as number)}
-              />
-              <Tooltip content={<CustomTooltip target={resolvedTarget} mode={mode} binSeconds={binSeconds} />} />
-              {referenceLine}
-              {DataElement}
-            </ChartComponent>
-          </ResponsiveContainer>
-        )}
-      </div>
-      <p className="mt-4 text-xs text-slate-500">
-        Streaming series updates replace the entire 60-point window whenever the backend publishes a block update.
-      </p>
-    </article>
   );
 }
