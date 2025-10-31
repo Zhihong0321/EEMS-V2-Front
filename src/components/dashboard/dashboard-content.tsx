@@ -42,7 +42,7 @@ export function DashboardContent({
     void refreshHistory();
   }, [refreshHistory]);
 
-  const { block, loading: blockLoading, connected, reconnecting, lastReadingTs, rawReadings, refresh: refreshBlock } = useLatestBlock(
+  const { block, loading: blockLoading, connected, reconnecting, lastReadingTs, refresh: refreshBlock } = useLatestBlock(
     simulatorId,
     {
       onWindowChange: handleWindowChange
@@ -123,7 +123,7 @@ export function DashboardContent({
           loading={blockLoading}
           targetKwh={targetKwh}
           mode={chartMode}
-          rawReadings={chartMode === "non-accumulate" ? rawReadings : undefined}
+
         />
         <div className="flex flex-col gap-6">
           <LiveStatus

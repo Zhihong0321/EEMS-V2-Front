@@ -33,7 +33,6 @@ type CurrentBlockChartProps = {
   loading: boolean;
   targetKwh?: number;
   mode: "accumulate" | "non-accumulate";
-  rawReadings?: { ts: number; power_kw: number; sample_seconds: number }[];
 };
 
 type ChartPoint = {
@@ -44,7 +43,6 @@ type ChartPoint = {
 function buildChartData(
   block: LatestBlock | null,
   mode: "accumulate" | "non-accumulate",
-  rawReadings: { ts: number; power_kw: number; sample_seconds: number }[] = [],
   currentWindow: { startTs: number; endTs: number }
 ): { data: ChartPoint[]; startTs: number; endTs: number; binSeconds: number } {
   const { startTs, endTs } = currentWindow;
@@ -59,15 +57,6 @@ function buildChartData(
       value: 0,
     }));
     return { data, startTs, endTs, binSeconds: 30 };
-  }
-
-  if (mode !== "accumulate" && rawReadings.length > 0) {
-    // Use raw readings for non-accumulate mode
-    const data = rawReadings.map((reading) => ({
-      ts: reading.ts,
-      value: reading.power_kw,
-    }));
-    return { data, startTs, endTs, binSeconds: 1 }; // Arbitrary binSeconds since no binning
   }
 
   // Original binned logic
@@ -109,20 +98,10 @@ function formatWindow(startTs: number, endTs: number): string {
   }
 }
 
-export function CurrentBlockChart({ block, loading, targetKwh, mode, rawReadings }: CurrentBlockChartProps) {
+export function CurrentBlockChart({ block, loading, targetKwh, mode }: Omit<CurrentBlockChartProps, 'rawReadings'>) {
   const resolvedTarget = targetKwh ?? block?.target_kwh ?? 0;
 
   const currentWindow = (() => {
-    if (mode === "non-accumulate" && rawReadings && rawReadings.length > 0) {
-      const latestReadingTime = new Date(Math.max(...rawReadings.map(r => r.ts)));
-      const minutes = latestReadingTime.getMinutes();
-      const startMinutes = minutes < 30 ? 0 : 30;
-      const start = new Date(latestReadingTime);
-      start.setMinutes(startMinutes, 0, 0);
-      const end = new Date(start);
-      end.setMinutes(start.getMinutes() + 30);
-      return { startTs: start.getTime(), endTs: end.getTime() };
-    }
     if (block) {
       const start = new Date(block.block_start_local);
       const end = new Date(start.getTime() + 30 * 60 * 1000);
@@ -140,7 +119,7 @@ export function CurrentBlockChart({ block, loading, targetKwh, mode, rawReadings
   })();
 
   const windowLabel = formatWindow(currentWindow.startTs, currentWindow.endTs);
-  const { data: chartData, startTs, endTs, binSeconds } = buildChartData(block, mode, rawReadings, currentWindow);
+  const { data: chartData, startTs, endTs, binSeconds } = buildChartData(block, mode, currentWindow);
 
   const isAccumulate = mode === "accumulate";
 

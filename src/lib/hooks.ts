@@ -85,7 +85,6 @@ type LatestBlockState = {
   connected: boolean;
   reconnecting: boolean;
   lastReadingTs?: string;
-  rawReadings: { ts: number; power_kw: number; sample_seconds: number }[];
 };
 
 export function useLatestBlock(
@@ -100,8 +99,7 @@ export function useLatestBlock(
     loading: !initialBlock && !!simulatorId,
     error: null,
     connected: false,
-    reconnecting: false,
-    rawReadings: []
+    reconnecting: false
   });
   const alertRef = useRef(false);
   const reconnectToastId = useRef<string | null>(null);
@@ -213,21 +211,12 @@ export function useLatestBlock(
       };
 
       const processEvent = (event: SseEvent) => {
+        if (event.type === "reading") {
+          void refresh();
+          return;
+        }
+
         setState((prev) => {
-          if (event.type === "reading") {
-            const newReading = {
-              ts: new Date(event.ts).getTime(),
-              power_kw: event.power_kw,
-              sample_seconds: event.sample_seconds
-            };
-
-            // Keep the last 30 minutes of readings, assuming 2 readings per minute
-            const MAX_READINGS = 30 * 2 * 30; // 30x speed
-
-            const updatedReadings = [...prev.rawReadings, newReading].slice(-MAX_READINGS);
-
-            return { ...prev, lastReadingTs: event.ts, rawReadings: updatedReadings };
-          }
           if (event.type === "alert-80pct") {
             if (!alertRef.current) {
               alertRef.current = true;
@@ -260,8 +249,7 @@ export function useLatestBlock(
             return {
               ...prev,
               block: nextBlock,
-              error: null,
-              rawReadings: [] // Clear raw readings on new block
+              error: null
             };
           }
           return prev;
@@ -290,7 +278,7 @@ export function useLatestBlock(
         reconnectToastId.current = null;
       }
     };
-  }, [dismiss, initialBlock, onAlert80pct, onWindowChange, push, simulatorId]);
+  }, [dismiss, initialBlock, onAlert80pct, onWindowChange, push, refresh, simulatorId]);
 
 
 
@@ -301,7 +289,6 @@ export function useLatestBlock(
     connected: state.connected,
     reconnecting: state.reconnecting,
     lastReadingTs: state.lastReadingTs,
-    rawReadings: state.rawReadings,
     refresh: refresh
   };
 }
