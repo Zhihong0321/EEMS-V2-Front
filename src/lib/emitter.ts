@@ -136,6 +136,23 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick, fastForwardEnabled
       return;
     }
 
+    // Clear future readings from localStorage when simulator starts
+    // This ensures clean start without old fast-forward data interfering
+    try {
+      const storageKey = `recent_ticks_${simulatorId}`;
+      const now = Date.now();
+      const existingTicks = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      // Filter out any ticks that are in the future (more than 1 minute ahead)
+      const currentTicks = existingTicks.filter((tick: { ts: number }) => {
+        const tickTime = typeof tick.ts === 'number' ? tick.ts : new Date(tick.ts).getTime();
+        return tickTime <= now + 60 * 1000; // Allow 1 minute tolerance
+      });
+      localStorage.setItem(storageKey, JSON.stringify(currentTicks));
+    } catch (error) {
+      // Ignore localStorage errors
+      console.warn('Failed to clear future readings from localStorage:', error);
+    }
+
     failureRef.current = 0;
     setIsRunning(true);
     void sendTick();

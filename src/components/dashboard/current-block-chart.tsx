@@ -48,16 +48,11 @@ function buildChartData(
 ): { data: ChartPoint[]; startTs: number; endTs: number; binSeconds: number } {
   const now = new Date().getTime();
   
-  // Check if backend block is in the future (more than 1 hour ahead)
-  // This handles the case where previous fast-forward sessions left future data
+  // Simple: if backend block is in the future, show current real-time block instead
   if (block && block.block_start_local) {
     const blockStartTs = new Date(block.block_start_local).getTime();
-    const timeDiff = blockStartTs - now;
-    
-    // If block is more than 1 hour in the future, use current real-time block instead
-    // This handles the case where previous fast-forward sessions left future data
-    if (timeDiff > 60 * 60 * 1000) {
-      // Show current real-time block (empty, waiting for new readings)
+    // If block start is in the future, ignore it and show current block
+    if (blockStartTs > now) {
       const currentBlock = getCurrentBlockFromReading(new Date().toISOString());
       if (currentBlock) {
         const startTs = new Date(currentBlock.start).getTime();
