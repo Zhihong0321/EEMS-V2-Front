@@ -265,3 +265,31 @@ export async function deleteFutureReadings(simulatorId: string): Promise<void> {
     }
   }
 }
+
+/**
+ * Get the last reading timestamp for a simulator.
+ * Returns the timestamp of the last reading, or null if no readings exist.
+ */
+export async function getLastReadingTimestamp(simulatorId: string): Promise<string | null> {
+  try {
+    // Fetch latest block - if it has data, we can infer the last reading timestamp
+    const block = await fetchLatestBlock(simulatorId);
+    
+    // If block has data points, estimate last reading time from block start + bin duration
+    if (block.chart_bins?.points && block.chart_bins.points.length > 0) {
+      const blockStart = new Date(block.block_start_local);
+      const binSeconds = block.chart_bins.bin_seconds || 30;
+      const numPoints = block.chart_bins.points.length;
+      // Last reading would be approximately at block start + (numPoints * binSeconds)
+      const lastReadingTime = new Date(blockStart.getTime() + numPoints * binSeconds * 1000);
+      return lastReadingTime.toISOString();
+    }
+    
+    // If no data, return null (will start from current time)
+    return null;
+  } catch (error) {
+    // If fetch fails, return null (will start from current time)
+    console.warn("Failed to fetch last reading timestamp:", error);
+    return null;
+  }
+}

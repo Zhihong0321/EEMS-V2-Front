@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ingestReadings, deleteFutureReadings } from "./api";
+import { ingestReadings, deleteFutureReadings, getLastReadingTimestamp } from "./api";
 import type { TickIn } from "./types";
 import { useToast } from "@/components/ui/toast-provider";
 
@@ -122,7 +122,7 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick, fastForwardEnabled
     }
   }, [fastForwardEnabled, getTick, intervalMs, mode, onTickSent, push, simulatorId, stop]);
 
-  const start = useCallback(() => {
+  const start = useCallback(async () => {
     if (!simulatorId) {
       push({
         title: "No simulator selected",
@@ -143,13 +143,36 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick, fastForwardEnabled
       console.warn("Failed to delete future readings:", error);
     });
 
+    // Get last reading timestamp and continue from there
+    // This creates continuous simulated data and prevents chart gaps
+    try {
+      const lastReadingTs = await getLastReadingTimestamp(simulatorId);
+      if (lastReadingTs && fastForwardEnabled) {
+        // Continue simulation from last reading timestamp
+        const lastReadingDate = new Date(lastReadingTs);
+        const now = new Date();
+        
+        // Only use last reading if it's not in the future and not too old (within last hour)
+        const timeDiff = now.getTime() - lastReadingDate.getTime();
+        if (timeDiff > 0 && timeDiff < 60 * 60 * 1000) {
+          lastSimulatedTsRef.current = new Date(lastReadingDate);
+        } else {
+          // Start from current time if last reading is too old or in future
+          lastSimulatedTsRef.current = new Date(now);
+        }
+      }
+    } catch (error) {
+      // If fetch fails, start from current time (default behavior)
+      console.warn("Failed to get last reading timestamp, starting from current time:", error);
+    }
+
     failureRef.current = 0;
     setIsRunning(true);
     void sendTick();
     timerRef.current = setInterval(() => {
       void sendTick();
     }, intervalMs);
-  }, [intervalMs, push, sendTick, simulatorId]);
+  }, [fastForwardEnabled, intervalMs, push, sendTick, simulatorId]);
 
   useEffect(() => {
     startRef.current = start;
