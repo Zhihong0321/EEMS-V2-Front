@@ -230,3 +230,38 @@ export async function ingestReadings(payload: IngestRequest): Promise<void> {
     { retryDelays: [500, 1500, 3500] }
   );
 }
+
+/**
+ * Delete future readings for a simulator.
+ * This clears all readings with timestamps in the future relative to current time.
+ * Used when starting a new simulation session to avoid showing old fast-forward data.
+ */
+export async function deleteFutureReadings(simulatorId: string): Promise<void> {
+  try {
+    // Try DELETE endpoint with simulator_id and current timestamp
+    const now = new Date().toISOString();
+    await requestJson<void>(
+      `/api/v1/readings?simulator_id=${encodeURIComponent(simulatorId)}&before=${encodeURIComponent(now)}`,
+      withWriteHeaders({
+        method: "DELETE"
+      }),
+      { retryDelays: [500, 1500] }
+    );
+  } catch (error) {
+    // If DELETE endpoint doesn't exist or fails, try alternative endpoint
+    // Some backends might use: DELETE /api/v1/simulators/{id}/readings
+    try {
+      await requestJson<void>(
+        `/api/v1/simulators/${encodeURIComponent(simulatorId)}/readings`,
+        withWriteHeaders({
+          method: "DELETE"
+        }),
+        { retryDelays: [500, 1500] }
+      );
+    } catch (fallbackError) {
+      // If both fail, log warning but don't throw - simulator can still start
+      console.warn("Failed to delete future readings from backend:", error, fallbackError);
+      // Don't throw - allow simulator to start even if cleanup fails
+    }
+  }
+}

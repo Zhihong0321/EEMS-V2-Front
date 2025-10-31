@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ingestReadings } from "./api";
+import { ingestReadings, deleteFutureReadings } from "./api";
 import type { TickIn } from "./types";
 import { useToast } from "@/components/ui/toast-provider";
 
@@ -136,22 +136,12 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick, fastForwardEnabled
       return;
     }
 
-    // Clear future readings from localStorage when simulator starts
+    // Delete future readings from backend when simulator starts
     // This ensures clean start without old fast-forward data interfering
-    try {
-      const storageKey = `recent_ticks_${simulatorId}`;
-      const now = Date.now();
-      const existingTicks = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      // Filter out any ticks that are in the future (more than 1 minute ahead)
-      const currentTicks = existingTicks.filter((tick: { ts: number }) => {
-        const tickTime = typeof tick.ts === 'number' ? tick.ts : new Date(tick.ts).getTime();
-        return tickTime <= now + 60 * 1000; // Allow 1 minute tolerance
-      });
-      localStorage.setItem(storageKey, JSON.stringify(currentTicks));
-    } catch (error) {
-      // Ignore localStorage errors
-      console.warn('Failed to clear future readings from localStorage:', error);
-    }
+    void deleteFutureReadings(simulatorId).catch((error) => {
+      // Log but don't block simulator start if cleanup fails
+      console.warn("Failed to delete future readings:", error);
+    });
 
     failureRef.current = 0;
     setIsRunning(true);

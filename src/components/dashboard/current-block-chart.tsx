@@ -145,7 +145,19 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
     </Bar>
   );
 
-  const referenceLine = isAccumulate ? <ReferenceLine y={resolvedTarget} stroke="#f97316" strokeDasharray="6 6" /> : null;
+  // Reference lines
+  const referenceLine = isAccumulate ? (
+    <ReferenceLine y={resolvedTarget} stroke="#f97316" strokeDasharray="6 6" />
+  ) : targetPeakKwh ? (
+    // Semi-transparent reference line for peak target (white @ 15-20% opacity)
+    <ReferenceLine 
+      y={targetPeakKwh / 60} 
+      stroke="rgba(255, 255, 255, 0.18)" 
+      strokeWidth={2}
+      strokeDasharray="4 4"
+      label={{ value: "Peak Target", position: "right", fill: "rgba(255, 255, 255, 0.6)", fontSize: 11 }}
+    />
+  ) : null;
 
   return (
     <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
