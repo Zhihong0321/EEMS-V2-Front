@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -142,10 +144,19 @@ export function CurrentBlockChart({ block, loading, targetKwh, mode, rawReadings
 
   const isAccumulate = mode === "accumulate";
 
-  const ChartComponent = isAccumulate ? LineChart : BarChart;
-  const DataElement = isAccumulate ? 
-    <Line type="monotone" dataKey="value" stroke="#22d3ee" strokeWidth={2} dot={false} isAnimationActive={false} /> :
-    <Bar dataKey="value" fill="#22d3ee" isAnimationActive={false} />;
+  const ChartComponent = isAccumulate ? LineChart : AreaChart;
+  const DataElement = isAccumulate ? (
+    <Line type="monotone" dataKey="value" stroke="#22d3ee" strokeWidth={2} dot={false} isAnimationActive={false} />
+  ) : (
+    <Area
+      type="monotone"
+      dataKey="value"
+      stroke="#22d3ee"
+      fill="#22d3ee"
+      fillOpacity={0.3}
+      isAnimationActive={false}
+    />
+  );
 
   const referenceLine = isAccumulate ? <ReferenceLine y={resolvedTarget} stroke="#f97316" strokeDasharray="6 6" /> : null;
 
