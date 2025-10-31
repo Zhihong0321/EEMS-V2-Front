@@ -149,21 +149,19 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick, fastForwardEnabled
       const lastReadingTs = await getLastReadingTimestamp(simulatorId);
       if (lastReadingTs && fastForwardEnabled) {
         // Continue simulation from last reading timestamp
-        const lastReadingDate = new Date(lastReadingTs);
-        const now = new Date();
-        
-        // Only use last reading if it's not in the future and not too old (within last hour)
-        const timeDiff = now.getTime() - lastReadingDate.getTime();
-        if (timeDiff > 0 && timeDiff < 60 * 60 * 1000) {
-          lastSimulatedTsRef.current = new Date(lastReadingDate);
-        } else {
-          // Start from current time if last reading is too old or in future
-          lastSimulatedTsRef.current = new Date(now);
-        }
+        // getLastReadingTimestamp already validates it's in the past, so safe to use
+        lastSimulatedTsRef.current = new Date(lastReadingTs);
+      } else if (fastForwardEnabled) {
+        // No valid last reading or fast-forward disabled, start from current time
+        lastSimulatedTsRef.current = new Date();
       }
+      // If fast-forward disabled, lastSimulatedTsRef stays null (will use current time in sendTick)
     } catch (error) {
       // If fetch fails, start from current time (default behavior)
       console.warn("Failed to get last reading timestamp, starting from current time:", error);
+      if (fastForwardEnabled) {
+        lastSimulatedTsRef.current = new Date();
+      }
     }
 
     failureRef.current = 0;
