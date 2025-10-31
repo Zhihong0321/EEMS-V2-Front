@@ -77,23 +77,28 @@ export function CombinedDashboard({
   // Track last reading timestamp from emitter and detect block changes
   // Use a ref to track the last block to avoid unnecessary refreshes
   const lastBlockStartRef = useRef<string | null>(null);
+  const lastReadingTsRef = useRef<string | null>(null);
   
   const handleTickSent = useCallback((tick: TickIn) => {
     if (tick.device_ts) {
       const currentBlock = getCurrentBlockFromReading(tick.device_ts);
       if (currentBlock) {
-        // Always update lastReadingTs for chart (needed to determine current window)
-        setLastReadingTs(tick.device_ts);
+        // Only update lastReadingTs state if block changed (to reduce flickering)
+        // But track it in ref for block change detection
+        const blockChanged = lastBlockStartRef.current !== currentBlock.start;
         
-        // Only refresh block data if block actually changed
-        if (lastBlockStartRef.current !== currentBlock.start) {
+        if (blockChanged) {
           lastBlockStartRef.current = currentBlock.start;
           currentBlockRef.current = currentBlock.start;
+          setLastReadingTs(tick.device_ts); // Update state when block changes
           // Trigger refresh when block changes
           void refreshBlock();
           void refreshHistory();
+        } else {
+          // Block hasn't changed, just update ref (no state update = no flicker)
+          lastReadingTsRef.current = tick.device_ts;
         }
-        // If block hasn't changed, don't refresh - SSE will update the data
+        // SSE will update the block data automatically via block-update events
       }
     }
   }, [refreshBlock, refreshHistory]);
@@ -103,7 +108,8 @@ export function CombinedDashboard({
   const manualEmitter = useManualEmitter(simulatorId, () => manualPowerKw, fastForwardEnabled, handleTickSent);
 
   // Use SSE lastReadingTs if available, otherwise use emitter's lastReadingTs
-  const effectiveLastReadingTs = sseLastReadingTs ?? lastReadingTs;
+  // Prefer SSE as it's more reliable, fallback to state, then ref
+  const effectiveLastReadingTs = sseLastReadingTs ?? lastReadingTs ?? lastReadingTsRef.current;
 
   const toggleAuto = () => {
     if (autoEmitter.isRunning) {

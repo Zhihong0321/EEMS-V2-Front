@@ -127,7 +127,14 @@ export function CurrentBlockChart({ block, loading, targetKwh, mode, lastReading
   const resolvedTarget = targetKwh ?? block?.target_kwh ?? 0;
 
   const currentWindow = (() => {
-    // Priority 1: Use lastReadingTs to determine current block (prototype mode)
+    // Priority 1: If a block is provided, use its start time to define the window (backend is source of truth)
+    if (block && block.block_start_local) {
+      const start = new Date(block.block_start_local);
+      const end = new Date(start.getTime() + 30 * 60 * 1000);
+      return { startTs: start.getTime(), endTs: end.getTime() };
+    }
+    
+    // Priority 2: Use lastReadingTs to determine current block (fallback when no block data yet)
     if (lastReadingTs) {
       const blockFromReading = getCurrentBlockFromReading(lastReadingTs);
       if (blockFromReading) {
@@ -135,13 +142,6 @@ export function CurrentBlockChart({ block, loading, targetKwh, mode, lastReading
         const end = new Date(blockFromReading.end);
         return { startTs: start.getTime(), endTs: end.getTime() };
       }
-    }
-    
-    // Priority 2: If a block is provided, use its start time to define the window.
-    if (block) {
-      const start = new Date(block.block_start_local);
-      const end = new Date(start.getTime() + 30 * 60 * 1000);
-      return { startTs: start.getTime(), endTs: end.getTime() };
     }
     
     // Priority 3: Fallback for when there is no block data yet, based on real time.
