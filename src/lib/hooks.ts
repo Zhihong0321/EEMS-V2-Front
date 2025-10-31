@@ -76,7 +76,6 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
 type LatestBlockOptions = {
   onAlert80pct?: (message: string) => void;
   onWindowChange?: (blockStartLocal?: string) => void;
-  externalLastReadingTs?: string | null; // External source of last reading timestamp (e.g., from emitter)
 };
 
 type LatestBlockState = {
@@ -94,24 +93,17 @@ export function useLatestBlock(
   initialBlock: LatestBlock | null = null
 ) {
   const { push, dismiss } = useToast();
-  const { onAlert80pct, onWindowChange, externalLastReadingTs } = options;
+  const { onAlert80pct, onWindowChange } = options;
   const [state, setState] = useState<LatestBlockState>({
     block: initialBlock,
     loading: !initialBlock && !!simulatorId,
     error: null,
     connected: false,
     reconnecting: false,
-    lastReadingTs: externalLastReadingTs ?? undefined
+    lastReadingTs: undefined
   });
   const alertRef = useRef(false);
   const reconnectToastId = useRef<string | null>(null);
-
-  // Sync external lastReadingTs when it changes
-  useEffect(() => {
-    if (externalLastReadingTs) {
-      setState((prev) => ({ ...prev, lastReadingTs: externalLastReadingTs }));
-    }
-  }, [externalLastReadingTs]);
 
   const refresh = useCallback(async () => {
     if (!simulatorId) return;
@@ -173,6 +165,7 @@ export function useLatestBlock(
 
     let source: EventSource | null = null;
     let disposed = false;
+    let refreshDebounceTimer: NodeJS.Timeout | null = null;
 
     let sseUrl: string;
     try {
@@ -221,10 +214,20 @@ export function useLatestBlock(
 
       const processEvent = (event: SseEvent) => {
         if (event.type === "reading") {
-          // Update lastReadingTs from SSE event (for chart window determination)
+          // Update lastReadingTs from SSE event
           setState((prev) => ({ ...prev, lastReadingTs: event.ts }));
-          // Don't refresh on every reading event - SSE block-update events will handle data updates
-          // This reduces flickering while still tracking the latest reading timestamp
+          // Auto-refresh block data when reading is received (for prototype - ensures chart updates)
+          // Use debouncing to batch rapid readings
+          if (!cancelled && !disposed) {
+            if (refreshDebounceTimer) {
+              clearTimeout(refreshDebounceTimer);
+            }
+            refreshDebounceTimer = setTimeout(() => {
+              if (!disposed && !cancelled) {
+                void refresh();
+              }
+            }, 500); // 500ms debounce for rapid readings
+          }
           return;
         }
 
@@ -285,12 +288,16 @@ export function useLatestBlock(
       if (source) {
         source.close();
       }
+      if (refreshDebounceTimer) {
+        clearTimeout(refreshDebounceTimer);
+        refreshDebounceTimer = null;
+      }
       if (reconnectToastId.current) {
         dismiss(reconnectToastId.current);
         reconnectToastId.current = null;
       }
     };
-  }, [dismiss, externalLastReadingTs, initialBlock, onAlert80pct, onWindowChange, push, refresh, simulatorId]);
+  }, [dismiss, initialBlock, onAlert80pct, onWindowChange, push, refresh, simulatorId]);
 
 
 

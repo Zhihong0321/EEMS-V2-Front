@@ -15,7 +15,7 @@ import {
   YAxis
 } from "recharts";
 import type { LatestBlock } from "@/lib/types";
-import { getCurrentBlockFromReading, formatBlockWindow } from "@/lib/block-utils";
+import { formatBlockWindow } from "@/lib/block-utils";
 
 const TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE_LABEL ?? "Asia/Kuala_Lumpur";
 
@@ -44,39 +44,14 @@ type ChartPoint = {
 
 function buildChartData(
   block: LatestBlock | null,
-  mode: "accumulate" | "non-accumulate",
-  currentWindow: { startTs: number; endTs: number }
+  mode: "accumulate" | "non-accumulate"
 ): { data: ChartPoint[]; startTs: number; endTs: number; binSeconds: number } {
-  const { startTs, endTs } = currentWindow;
-
-  // Block is considered valid if it exists and its start time matches the current window's start time
-  // Compare by formatting both in the same timezone to avoid timezone parsing issues
-  let blockIsCurrent = false;
-  if (block && block.block_start_local) {
-    // Parse the backend's block_start_local (it's in local timezone format like "2024-10-31T16:30:00+08:00")
-    const blockStartDate = new Date(block.block_start_local);
-    
-    // Format both in the target timezone for comparison
-    const blockStartFormatted = windowFormatter.format(blockStartDate);
-    const windowStartFormatted = windowFormatter.format(startTs);
-    
-    // Compare the formatted strings (just hour:minute) or timestamps
-    // Use timestamp comparison with tolerance for timezone rounding
-    const timeDiff = Math.abs(blockStartDate.getTime() - startTs);
-    // Allow up to 5 minutes difference (timezone/rounding issues, and to account for backend processing delays)
-    blockIsCurrent = timeDiff < 5 * 60 * 1000;
-    
-    // Also check if the formatted times match (as a secondary check)
-    if (!blockIsCurrent) {
-      // Extract hour:minute from both
-      const blockHrMin = blockStartFormatted.split(':').slice(0, 2).join(':');
-      const windowHrMin = windowStartFormatted.split(':').slice(0, 2).join(':');
-      blockIsCurrent = blockHrMin === windowHrMin;
-    }
-  }
-
-  if (!blockIsCurrent || !block) {
-    // If block is not current or doesn't exist, return an empty chart for the current window
+  // Simple approach: trust the backend block data completely
+  if (!block || !block.block_start_local) {
+    // Fallback: return empty chart with current time window
+    const now = new Date();
+    const startTs = now.getTime();
+    const endTs = startTs + 30 * 60 * 1000;
     const data = Array(60).fill(null).map((_, index) => ({
       ts: startTs + (index + 1) * 30 * 1000,
       value: 0,
@@ -84,7 +59,9 @@ function buildChartData(
     return { data, startTs, endTs, binSeconds: 30 };
   }
 
-  // Original binned logic - block is guaranteed to be non-null here
+  // Use backend block data - simple and reliable
+  const startTs = new Date(block.block_start_local).getTime();
+  const endTs = startTs + 30 * 60 * 1000;
   const points = block.chart_bins?.points ?? [];
   const binSeconds = block.chart_bins?.bin_seconds ?? 30;
   const numPoints = Math.floor((30 * 60) / binSeconds);
@@ -103,7 +80,7 @@ function buildChartData(
     }));
   }
 
-  // Pad data to 60 points
+  // Pad data to fill all bins
   const paddedData = Array(numPoints).fill(null).map((_, index) => {
     const ts = startTs + (index + 1) * binSeconds * 1000;
     const existingPoint = data.find(p => p.ts === ts);
@@ -126,36 +103,10 @@ function formatWindow(startTs: number, endTs: number): string {
 export function CurrentBlockChart({ block, loading, targetKwh, mode, lastReadingTs }: CurrentBlockChartProps) {
   const resolvedTarget = targetKwh ?? block?.target_kwh ?? 0;
 
-  const currentWindow = (() => {
-    // Priority 1: If a block is provided, use its start time to define the window (backend is source of truth)
-    if (block && block.block_start_local) {
-      const start = new Date(block.block_start_local);
-      const end = new Date(start.getTime() + 30 * 60 * 1000);
-      return { startTs: start.getTime(), endTs: end.getTime() };
-    }
-    
-    // Priority 2: Use lastReadingTs to determine current block (fallback when no block data yet)
-    if (lastReadingTs) {
-      const blockFromReading = getCurrentBlockFromReading(lastReadingTs);
-      if (blockFromReading) {
-        const start = new Date(blockFromReading.start);
-        const end = new Date(blockFromReading.end);
-        return { startTs: start.getTime(), endTs: end.getTime() };
-      }
-    }
-    
-    // Priority 3: Fallback for when there is no block data yet, based on real time.
-    const now = new Date();
-    const minutes = now.getMinutes();
-    const roundedMinutes = Math.floor(minutes / 30) * 30;
-    const start = new Date(now);
-    start.setMinutes(roundedMinutes, 0, 0);
-    const end = new Date(start.getTime() + 30 * 60 * 1000);
-    return { startTs: start.getTime(), endTs: end.getTime() };
-  })();
-
-  const windowLabel = formatWindow(currentWindow.startTs, currentWindow.endTs);
-  const { data: chartData, startTs, endTs, binSeconds } = buildChartData(block, mode, currentWindow);
+  // Simple: use backend block data directly, no complex matching
+  const { data: chartData, startTs, endTs, binSeconds } = buildChartData(block, mode);
+  
+  const windowLabel = formatWindow(startTs, endTs);
 
   const isAccumulate = mode === "accumulate";
 

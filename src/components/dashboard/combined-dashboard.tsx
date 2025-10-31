@@ -9,7 +9,6 @@ import { ManualRunPanel } from "../common/manual-run-panel";
 import { useBlockHistory, useLatestBlock } from "@/lib/hooks";
 import { useAutoEmitter, useManualEmitter } from "@/lib/emitter";
 import type { HistoryBlock, LatestBlock, TickIn } from "@/lib/types";
-import { getCurrentBlockFromReading } from "@/lib/block-utils";
 
 const percentFormatter = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 1
@@ -58,58 +57,39 @@ export function CombinedDashboard({
   const { block, loading: blockLoading, connected, reconnecting, lastReadingTs: sseLastReadingTs, refresh: refreshBlock } = useLatestBlock(
     simulatorId,
     {
-      onWindowChange: handleWindowChange,
-      externalLastReadingTs: lastReadingTs // Pass external lastReadingTs to hook
+      onWindowChange: handleWindowChange
     },
     initialBlock
   );
 
-  // Track current block to detect changes
-  const currentBlockRef = useRef<string | null>(null);
-
-  // Initialize current block ref when block is loaded
-  useEffect(() => {
-    if (block?.block_start_local && !currentBlockRef.current) {
-      currentBlockRef.current = block.block_start_local;
-    }
-  }, [block]);
-
-  // Track last reading timestamp from emitter and detect block changes
-  // Use a ref to track the last block to avoid unnecessary refreshes
-  const lastBlockStartRef = useRef<string | null>(null);
-  const lastReadingTsRef = useRef<string | null>(null);
-  
+  // Simple: trigger refresh when tick is sent (for immediate chart updates)
   const handleTickSent = useCallback((tick: TickIn) => {
     if (tick.device_ts) {
-      const currentBlock = getCurrentBlockFromReading(tick.device_ts);
-      if (currentBlock) {
-        // Only update lastReadingTs state if block changed (to reduce flickering)
-        // But track it in ref for block change detection
-        const blockChanged = lastBlockStartRef.current !== currentBlock.start;
-        
-        if (blockChanged) {
-          lastBlockStartRef.current = currentBlock.start;
-          currentBlockRef.current = currentBlock.start;
-          setLastReadingTs(tick.device_ts); // Update state when block changes
-          // Trigger refresh when block changes
-          void refreshBlock();
-          void refreshHistory();
-        } else {
-          // Block hasn't changed, just update ref (no state update = no flicker)
-          lastReadingTsRef.current = tick.device_ts;
-        }
-        // SSE will update the block data automatically via block-update events
-      }
+      setLastReadingTs(tick.device_ts);
+      // Trigger refresh to get latest block data (debounced by hook)
+      void refreshBlock();
     }
-  }, [refreshBlock, refreshHistory]);
+  }, [refreshBlock]);
 
   // Emitters
   const autoEmitter = useAutoEmitter(simulatorId, baseKw, volatility, fastForwardEnabled, handleTickSent);
   const manualEmitter = useManualEmitter(simulatorId, () => manualPowerKw, fastForwardEnabled, handleTickSent);
 
-  // Use SSE lastReadingTs if available, otherwise use emitter's lastReadingTs
-  // Prefer SSE as it's more reliable, fallback to state, then ref
-  const effectiveLastReadingTs = sseLastReadingTs ?? lastReadingTs ?? lastReadingTsRef.current;
+  // Periodic polling while simulator is running (for reliable updates)
+  useEffect(() => {
+    const isRunning = autoEmitter.isRunning || manualEmitter.isRunning;
+    if (!isRunning) return;
+
+    // Poll every 2 seconds while simulator is running
+    const pollInterval = setInterval(() => {
+      void refreshBlock();
+    }, 2000);
+
+    return () => clearInterval(pollInterval);
+  }, [autoEmitter.isRunning, manualEmitter.isRunning, refreshBlock]);
+
+  // Use SSE lastReadingTs (most reliable)
+  const effectiveLastReadingTs = sseLastReadingTs ?? lastReadingTs;
 
   const toggleAuto = () => {
     if (autoEmitter.isRunning) {
