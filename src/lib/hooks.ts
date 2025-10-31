@@ -236,7 +236,6 @@ export function useLatestBlock(
                   ...previousBlock,
                   accumulated_kwh: event.accumulated_kwh,
                   percent_of_target: event.percent_of_target,
-                  chart_bins: event.chart_bins ?? previousBlock.chart_bins,
                   block_start_local: event.block_start_local ?? previousBlock.block_start_local
                 }
               : previousBlock;

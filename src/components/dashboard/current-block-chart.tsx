@@ -48,7 +48,7 @@ function buildChartData(
   const { startTs, endTs } = currentWindow;
 
   // Block is considered valid only if it exists and its start time matches the current window's start time
-  const blockIsCurrent = block && new Date(block.block_start_local).getTime() === startTs;
+  const blockIsCurrent = block && new Date((block as LatestBlock).block_start_local).getTime() === startTs;
 
   if (!blockIsCurrent) {
     // If block is not current or doesn't exist, return an empty chart for the current window
@@ -102,19 +102,13 @@ export function CurrentBlockChart({ block, loading, targetKwh, mode }: Omit<Curr
   const resolvedTarget = targetKwh ?? block?.target_kwh ?? 0;
 
   const currentWindow = (() => {
-    if (block) {
-      const start = new Date(block.block_start_local);
-      const end = new Date(start.getTime() + 30 * 60 * 1000);
-      return { startTs: start.getTime(), endTs: end.getTime() };
-    }
-    // Fallback for when there is no block data yet, based on real time.
+    // Always calculate the 30-minute block based on the current system time.
     const now = new Date();
     const minutes = now.getMinutes();
-    const startMinutes = minutes < 30 ? 0 : 30;
+    const roundedMinutes = Math.floor(minutes / 30) * 30;
     const start = new Date(now);
-    start.setMinutes(startMinutes, 0, 0);
-    const end = new Date(start);
-    end.setMinutes(start.getMinutes() + 30);
+    start.setMinutes(roundedMinutes, 0, 0);
+    const end = new Date(start.getTime() + 30 * 60 * 1000);
     return { startTs: start.getTime(), endTs: end.getTime() };
   })();
 

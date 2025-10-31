@@ -50,18 +50,7 @@ export function DashboardContent({
     initialBlock
   );
 
-  useEffect(() => {
-    if (lastReadingTs && chartMode === "non-accumulate") {
-      refreshBlock();
-    }
-  }, [lastReadingTs, refreshBlock, chartMode]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refreshBlock();
-    }, 15000); // Poll every 15 seconds
-    return () => clearInterval(interval);
-  }, [refreshBlock]);
 
   const percentOfTarget = block?.percent_of_target ?? 0;
   const percentVariant = percentOfTarget > 100 ? "text-danger" : percentOfTarget >= 80 ? "text-warning" : "text-success";
