@@ -75,17 +75,25 @@ export function CombinedDashboard({
   }, [block]);
 
   // Track last reading timestamp from emitter and detect block changes
+  // Use a ref to track the last block to avoid unnecessary refreshes
+  const lastBlockStartRef = useRef<string | null>(null);
+  
   const handleTickSent = useCallback((tick: TickIn) => {
-    setLastReadingTs(tick.device_ts);
-    
-    // Detect block change and trigger refresh
     if (tick.device_ts) {
       const currentBlock = getCurrentBlockFromReading(tick.device_ts);
-      if (currentBlock && currentBlockRef.current !== currentBlock.start) {
-        currentBlockRef.current = currentBlock.start;
-        // Trigger refresh when block changes
-        void refreshBlock();
-        void refreshHistory();
+      if (currentBlock) {
+        // Always update lastReadingTs for chart (needed to determine current window)
+        setLastReadingTs(tick.device_ts);
+        
+        // Only refresh block data if block actually changed
+        if (lastBlockStartRef.current !== currentBlock.start) {
+          lastBlockStartRef.current = currentBlock.start;
+          currentBlockRef.current = currentBlock.start;
+          // Trigger refresh when block changes
+          void refreshBlock();
+          void refreshHistory();
+        }
+        // If block hasn't changed, don't refresh - SSE will update the data
       }
     }
   }, [refreshBlock, refreshHistory]);

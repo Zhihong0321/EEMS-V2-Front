@@ -221,9 +221,10 @@ export function useLatestBlock(
 
       const processEvent = (event: SseEvent) => {
         if (event.type === "reading") {
-          // Update lastReadingTs from SSE event
+          // Update lastReadingTs from SSE event (for chart window determination)
           setState((prev) => ({ ...prev, lastReadingTs: event.ts }));
-          void refresh();
+          // Don't refresh on every reading event - SSE block-update events will handle data updates
+          // This reduces flickering while still tracking the latest reading timestamp
           return;
         }
 

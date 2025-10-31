@@ -49,8 +49,31 @@ function buildChartData(
 ): { data: ChartPoint[]; startTs: number; endTs: number; binSeconds: number } {
   const { startTs, endTs } = currentWindow;
 
-  // Block is considered valid only if it exists and its start time matches the current window's start time
-  const blockIsCurrent = block && new Date(block.block_start_local).getTime() === startTs;
+  // Block is considered valid if it exists and its start time matches the current window's start time
+  // Compare by formatting both in the same timezone to avoid timezone parsing issues
+  let blockIsCurrent = false;
+  if (block && block.block_start_local) {
+    // Parse the backend's block_start_local (it's in local timezone format like "2024-10-31T16:30:00+08:00")
+    const blockStartDate = new Date(block.block_start_local);
+    
+    // Format both in the target timezone for comparison
+    const blockStartFormatted = windowFormatter.format(blockStartDate);
+    const windowStartFormatted = windowFormatter.format(startTs);
+    
+    // Compare the formatted strings (just hour:minute) or timestamps
+    // Use timestamp comparison with tolerance for timezone rounding
+    const timeDiff = Math.abs(blockStartDate.getTime() - startTs);
+    // Allow up to 5 minutes difference (timezone/rounding issues, and to account for backend processing delays)
+    blockIsCurrent = timeDiff < 5 * 60 * 1000;
+    
+    // Also check if the formatted times match (as a secondary check)
+    if (!blockIsCurrent) {
+      // Extract hour:minute from both
+      const blockHrMin = blockStartFormatted.split(':').slice(0, 2).join(':');
+      const windowHrMin = windowStartFormatted.split(':').slice(0, 2).join(':');
+      blockIsCurrent = blockHrMin === windowHrMin;
+    }
+  }
 
   if (!blockIsCurrent) {
     // If block is not current or doesn't exist, return an empty chart for the current window
