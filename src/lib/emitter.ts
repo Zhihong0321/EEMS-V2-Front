@@ -9,6 +9,7 @@ const AUTO_INTERVAL_MS = 1_000;
 const MANUAL_INTERVAL_MS = 1_000;
 const AUTO_SAMPLE_SECONDS = 30;
 const MANUAL_SAMPLE_SECONDS = 30;
+const FAST_FORWARD_MULTIPLIER = 30; // 30x speed: 1 real second = 30 simulated seconds
 const MAX_FAILURES = 3;
 
 export type EmitterState = {
@@ -22,9 +23,11 @@ type UseEmitterOptions = {
   intervalMs: number;
   mode: "auto" | "manual";
   getTick: () => TickIn;
+  fastForwardEnabled?: boolean;
+  onTickSent?: (tick: TickIn) => void;
 };
 
-function useEmitter({ simulatorId, intervalMs, mode, getTick }: UseEmitterOptions) {
+function useEmitter({ simulatorId, intervalMs, mode, getTick, fastForwardEnabled = false, onTickSent }: UseEmitterOptions) {
   const { push } = useToast();
   const [isRunning, setIsRunning] = useState(false);
   const [sentCount, setSentCount] = useState(0);
@@ -32,6 +35,8 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick }: UseEmitterOption
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const failureRef = useRef(0);
   const startRef = useRef<() => void>(() => {});
+  // Track the last simulated timestamp for fast-forward mode
+  const lastSimulatedTsRef = useRef<Date | null>(null);
 
   const stop = useCallback(() => {
     if (timerRef.current) {
@@ -39,6 +44,7 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick }: UseEmitterOption
       timerRef.current = null;
     }
     setIsRunning(false);
+    lastSimulatedTsRef.current = null;
   }, []);
 
   const sendTick = useCallback(async () => {
@@ -46,13 +52,41 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick }: UseEmitterOption
       return;
     }
 
-    const tick = getTick();
+    // Get the base tick
+    let tick = getTick();
+
+    // Apply fast-forward timestamp if enabled
+    if (fastForwardEnabled) {
+      const now = new Date();
+      
+      // Initialize or advance simulated timestamp
+      if (!lastSimulatedTsRef.current) {
+        // Start from current time or midnight if this is the first tick
+        const midnight = new Date(now);
+        midnight.setHours(0, 0, 0, 0);
+        lastSimulatedTsRef.current = midnight;
+      } else {
+        // Advance by FAST_FORWARD_MULTIPLIER seconds per real second
+        // Since we're sending every intervalMs, advance by that much simulated time
+        const simulatedSeconds = (intervalMs / 1000) * FAST_FORWARD_MULTIPLIER;
+        lastSimulatedTsRef.current = new Date(lastSimulatedTsRef.current.getTime() + simulatedSeconds * 1000);
+      }
+      
+      // Use the simulated timestamp
+      tick = {
+        ...tick,
+        device_ts: lastSimulatedTsRef.current.toISOString()
+      };
+    }
 
     try {
       await ingestReadings({ simulator_id: simulatorId, mode, ticks: [tick] });
       failureRef.current = 0;
       setSentCount((prev) => prev + 1);
-      setLastSentAt(new Date().toISOString());
+      setLastSentAt(tick.device_ts);
+      
+      // Notify parent component about the tick sent
+      onTickSent?.(tick);
 
       // Store the sent tick in localStorage for raw chart data
       const storageKey = `recent_ticks_${simulatorId}`;
@@ -87,7 +121,7 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick }: UseEmitterOption
         });
       }
     }
-  }, [getTick, mode, push, simulatorId, stop]);
+  }, [fastForwardEnabled, getTick, intervalMs, mode, onTickSent, push, simulatorId, stop]);
 
   const start = useCallback(() => {
     if (!simulatorId) {
@@ -132,7 +166,13 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick }: UseEmitterOption
   };
 }
 
-export function useAutoEmitter(simulatorId: string | null, baseKw: number, volatilityPct: number) {
+export function useAutoEmitter(
+  simulatorId: string | null,
+  baseKw: number,
+  volatilityPct: number,
+  fastForwardEnabled = false,
+  onTickSent?: (tick: TickIn) => void
+) {
   const getTick = useCallback((): TickIn => {
     const volatilityFactor = Math.max(0, Math.min(volatilityPct, 100)) / 100;
     const randomDelta = (Math.random() * 2 - 1) * volatilityFactor;
@@ -140,22 +180,41 @@ export function useAutoEmitter(simulatorId: string | null, baseKw: number, volat
     return {
       power_kw: Number(powerKw.toFixed(3)),
       sample_seconds: AUTO_SAMPLE_SECONDS,
-      device_ts: new Date().toISOString()
+      device_ts: new Date().toISOString() // Will be overridden in emitter if fast-forward enabled
     };
   }, [baseKw, volatilityPct]);
 
-  return useEmitter({ simulatorId, intervalMs: AUTO_INTERVAL_MS, mode: "auto", getTick });
+  return useEmitter({
+    simulatorId,
+    intervalMs: AUTO_INTERVAL_MS,
+    mode: "auto",
+    getTick,
+    fastForwardEnabled,
+    onTickSent
+  });
 }
 
-export function useManualEmitter(simulatorId: string | null, getPowerKw: () => number) {
+export function useManualEmitter(
+  simulatorId: string | null,
+  getPowerKw: () => number,
+  fastForwardEnabled = false,
+  onTickSent?: (tick: TickIn) => void
+) {
   const getTick = useCallback((): TickIn => {
     const powerKw = Math.max(0, getPowerKw());
     return {
       power_kw: Number(powerKw.toFixed(3)),
       sample_seconds: MANUAL_SAMPLE_SECONDS,
-      device_ts: new Date().toISOString()
+      device_ts: new Date().toISOString() // Will be overridden in emitter if fast-forward enabled
     };
   }, [getPowerKw]);
 
-  return useEmitter({ simulatorId, intervalMs: MANUAL_INTERVAL_MS, mode: "manual", getTick });
+  return useEmitter({
+    simulatorId,
+    intervalMs: MANUAL_INTERVAL_MS,
+    mode: "manual",
+    getTick,
+    fastForwardEnabled,
+    onTickSent
+  });
 }

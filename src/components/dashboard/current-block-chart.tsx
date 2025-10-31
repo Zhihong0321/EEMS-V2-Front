@@ -15,6 +15,7 @@ import {
   YAxis
 } from "recharts";
 import type { LatestBlock } from "@/lib/types";
+import { getCurrentBlockFromReading, formatBlockWindow } from "@/lib/block-utils";
 
 const TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE_LABEL ?? "Asia/Kuala_Lumpur";
 
@@ -33,6 +34,7 @@ type CurrentBlockChartProps = {
   loading: boolean;
   targetKwh?: number;
   mode: "accumulate" | "non-accumulate";
+  lastReadingTs?: string | null; // Last reading timestamp to determine current block
 };
 
 type ChartPoint = {
@@ -92,29 +94,40 @@ function formatWindow(startTs: number, endTs: number): string {
   try {
     const start = new Date(startTs);
     const end = new Date(endTs);
-    return `${windowFormatter.format(start)} – ${windowFormatter.format(end)}`;
+    return formatBlockWindow(start.toISOString(), end.toISOString(), TIMEZONE);
   } catch {
     return "Invalid time range";
   }
 }
 
-export function CurrentBlockChart({ block, loading, targetKwh, mode }: Omit<CurrentBlockChartProps, 'rawReadings'>) {
+export function CurrentBlockChart({ block, loading, targetKwh, mode, lastReadingTs }: CurrentBlockChartProps) {
   const resolvedTarget = targetKwh ?? block?.target_kwh ?? 0;
 
   const currentWindow = (() => {
+    // Priority 1: Use lastReadingTs to determine current block (prototype mode)
+    if (lastReadingTs) {
+      const blockFromReading = getCurrentBlockFromReading(lastReadingTs);
+      if (blockFromReading) {
+        const start = new Date(blockFromReading.start);
+        const end = new Date(blockFromReading.end);
+        return { startTs: start.getTime(), endTs: end.getTime() };
+      }
+    }
+    
+    // Priority 2: If a block is provided, use its start time to define the window.
     if (block) {
       const start = new Date(block.block_start_local);
       const end = new Date(start.getTime() + 30 * 60 * 1000);
       return { startTs: start.getTime(), endTs: end.getTime() };
     }
-    // Fallback for when there is no block data yet, based on real time.
+    
+    // Priority 3: Fallback for when there is no block data yet, based on real time.
     const now = new Date();
     const minutes = now.getMinutes();
-    const startMinutes = minutes < 30 ? 0 : 30;
+    const roundedMinutes = Math.floor(minutes / 30) * 30;
     const start = new Date(now);
-    start.setMinutes(startMinutes, 0, 0);
-    const end = new Date(start);
-    end.setMinutes(start.getMinutes() + 30);
+    start.setMinutes(roundedMinutes, 0, 0);
+    const end = new Date(start.getTime() + 30 * 60 * 1000);
     return { startTs: start.getTime(), endTs: end.getTime() };
   })();
 

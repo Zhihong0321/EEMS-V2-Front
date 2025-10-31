@@ -57,7 +57,7 @@ export function AutoRunPanel({
       <header className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-white">Auto mode</h2>
-          <p className="text-sm text-slate-400">Emit one tick every 15 seconds with gaussian noise.</p>
+          <p className="text-sm text-slate-400">Emit one tick every second with gaussian noise. Fast-forward mode advances simulated time by 30 seconds per real second.</p>
         </div>
         <BoltIcon className="h-8 w-8 text-cyan-500" aria-hidden="true" />
       </header>
@@ -87,7 +87,7 @@ export function AutoRunPanel({
         </label>
       </div>
       <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-4 text-xs text-slate-400">
-        <p>Next tick interval: <span className="font-semibold text-slate-200">15 seconds</span></p>
+        <p>Next tick interval: <span className="font-semibold text-slate-200">1 second</span></p>
         <p className="mt-1">
           Expected power window: <span className="font-semibold text-slate-200">{numberFormatter.format(Math.max(0, Math.round(baseKw * (1 - volatility / 100))))}</span> – {" "}
           <span className="font-semibold text-slate-200">{numberFormatter.format(Math.round(baseKw * (1 + volatility / 100)))}</span> kW

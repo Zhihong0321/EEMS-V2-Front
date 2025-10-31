@@ -76,6 +76,7 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
 type LatestBlockOptions = {
   onAlert80pct?: (message: string) => void;
   onWindowChange?: (blockStartLocal?: string) => void;
+  externalLastReadingTs?: string | null; // External source of last reading timestamp (e.g., from emitter)
 };
 
 type LatestBlockState = {
@@ -93,16 +94,24 @@ export function useLatestBlock(
   initialBlock: LatestBlock | null = null
 ) {
   const { push, dismiss } = useToast();
-  const { onAlert80pct, onWindowChange } = options;
+  const { onAlert80pct, onWindowChange, externalLastReadingTs } = options;
   const [state, setState] = useState<LatestBlockState>({
     block: initialBlock,
     loading: !initialBlock && !!simulatorId,
     error: null,
     connected: false,
-    reconnecting: false
+    reconnecting: false,
+    lastReadingTs: externalLastReadingTs ?? undefined
   });
   const alertRef = useRef(false);
   const reconnectToastId = useRef<string | null>(null);
+
+  // Sync external lastReadingTs when it changes
+  useEffect(() => {
+    if (externalLastReadingTs) {
+      setState((prev) => ({ ...prev, lastReadingTs: externalLastReadingTs }));
+    }
+  }, [externalLastReadingTs]);
 
   const refresh = useCallback(async () => {
     if (!simulatorId) return;
@@ -212,6 +221,8 @@ export function useLatestBlock(
 
       const processEvent = (event: SseEvent) => {
         if (event.type === "reading") {
+          // Update lastReadingTs from SSE event
+          setState((prev) => ({ ...prev, lastReadingTs: event.ts }));
           void refresh();
           return;
         }
@@ -278,7 +289,7 @@ export function useLatestBlock(
         reconnectToastId.current = null;
       }
     };
-  }, [dismiss, initialBlock, onAlert80pct, onWindowChange, push, refresh, simulatorId]);
+  }, [dismiss, externalLastReadingTs, initialBlock, onAlert80pct, onWindowChange, push, refresh, simulatorId]);
 
 
 

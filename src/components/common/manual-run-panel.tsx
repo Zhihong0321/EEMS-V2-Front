@@ -71,7 +71,7 @@ export function ManualRunPanel({
               onChange={handleSliderChange}
               className="w-full"
             />
-            <span className="text-xs text-slate-400">FAST-FORWARD x15 — Multiplier {(sliderValue * 100).toFixed(0)}%</span>
+            <span className="text-xs text-slate-400">FAST-FORWARD x30 — Multiplier {(sliderValue * 100).toFixed(0)}%</span>
           </label>
           <label className="flex flex-col gap-2 text-sm">
             <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Max power (kW)</span>
@@ -89,7 +89,7 @@ export function ManualRunPanel({
           <p>
             Current output: <span className="font-semibold text-slate-200">{powerKw.toFixed(1)}</span> kW
           </p>
-          <p className="mt-1">Ticks are emitted every <span className="font-semibold text-slate-200">1 second</span> with <span className="font-semibold text-slate-200">sample_seconds=15</span>.</p>
+          <p className="mt-1">Ticks are emitted every <span className="font-semibold text-slate-200">1 second</span> with <span className="font-semibold text-slate-200">sample_seconds=30</span>. Fast-forward mode advances simulated time by 30 seconds per real second.</p>
         </div>
       </div>
 
