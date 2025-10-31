@@ -15,7 +15,7 @@ import {
   YAxis
 } from "recharts";
 import type { LatestBlock } from "@/lib/types";
-import { formatBlockWindow, getCurrentBlockFromReading } from "@/lib/block-utils";
+import { formatBlockWindow } from "@/lib/block-utils";
 
 const TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE_LABEL ?? "Asia/Kuala_Lumpur";
 
@@ -46,78 +46,48 @@ function buildChartData(
   block: LatestBlock | null,
   mode: "accumulate" | "non-accumulate"
 ): { data: ChartPoint[]; startTs: number; endTs: number; binSeconds: number } {
-  const now = new Date().getTime();
-  
-  // Simple: if backend block is in the future, show current real-time block instead
-  if (block && block.block_start_local) {
-    const blockStartTs = new Date(block.block_start_local).getTime();
-    // If block start is in the future, ignore it and show current block
-    if (blockStartTs > now) {
-      const currentBlock = getCurrentBlockFromReading(new Date().toISOString());
-      if (currentBlock) {
-        const startTs = new Date(currentBlock.start).getTime();
-        const endTs = new Date(currentBlock.end).getTime();
-        const data = Array(60).fill(null).map((_, index) => ({
-          ts: startTs + (index + 1) * 30 * 1000,
-          value: 0,
-        }));
-        return { data, startTs, endTs, binSeconds: 30 };
-      }
-    }
-  }
-
-  // Use backend block data if it exists and is not too far in the future
-  if (block && block.block_start_local) {
-    const startTs = new Date(block.block_start_local).getTime();
+  // Simple: trust backend block data completely
+  if (!block || !block.block_start_local) {
+    // Fallback: return empty chart with current time window
+    const now = new Date();
+    const startTs = now.getTime();
     const endTs = startTs + 30 * 60 * 1000;
-    const points = block.chart_bins?.points ?? [];
-    const binSeconds = block.chart_bins?.bin_seconds ?? 30;
-    const numPoints = Math.floor((30 * 60) / binSeconds);
-
-    let data: ChartPoint[] = [];
-
-    if (mode === "accumulate") {
-      data = points.map((value, index) => ({
-        ts: startTs + (index + 1) * binSeconds * 1000,
-        value
-      }));
-    } else {
-      data = points.map((value, index) => ({
-        ts: startTs + (index + 1) * binSeconds * 1000,
-        value: value - (index === 0 ? 0 : points[index - 1])
-      }));
-    }
-
-    // Pad data to fill all bins
-    const paddedData = Array(numPoints).fill(null).map((_, index) => {
-      const ts = startTs + (index + 1) * binSeconds * 1000;
-      const existingPoint = data.find(p => p.ts === ts);
-      return existingPoint ?? { ts, value: 0 };
-    });
-
-    return { data: paddedData, startTs, endTs, binSeconds };
-  }
-
-  // Fallback: return empty chart with current time window (timezone-aware)
-  const currentBlock = getCurrentBlockFromReading(new Date().toISOString());
-  if (currentBlock) {
-    const startTs = new Date(currentBlock.start).getTime();
-    const endTs = new Date(currentBlock.end).getTime();
     const data = Array(60).fill(null).map((_, index) => ({
       ts: startTs + (index + 1) * 30 * 1000,
       value: 0,
     }));
     return { data, startTs, endTs, binSeconds: 30 };
   }
-  
-  // Last resort fallback
-  const startTs = now;
-  const endTs = now + 30 * 60 * 1000;
-  const data = Array(60).fill(null).map((_, index) => ({
-    ts: startTs + (index + 1) * 30 * 1000,
-    value: 0,
-  }));
-  return { data, startTs, endTs, binSeconds: 30 };
+
+  // Use backend block data - simple and reliable
+  const startTs = new Date(block.block_start_local).getTime();
+  const endTs = startTs + 30 * 60 * 1000;
+  const points = block.chart_bins?.points ?? [];
+  const binSeconds = block.chart_bins?.bin_seconds ?? 30;
+  const numPoints = Math.floor((30 * 60) / binSeconds);
+
+  let data: ChartPoint[] = [];
+
+  if (mode === "accumulate") {
+    data = points.map((value, index) => ({
+      ts: startTs + (index + 1) * binSeconds * 1000,
+      value
+    }));
+  } else {
+    data = points.map((value, index) => ({
+      ts: startTs + (index + 1) * binSeconds * 1000,
+      value: value - (index === 0 ? 0 : points[index - 1])
+    }));
+  }
+
+  // Pad data to fill all bins
+  const paddedData = Array(numPoints).fill(null).map((_, index) => {
+    const ts = startTs + (index + 1) * binSeconds * 1000;
+    const existingPoint = data.find(p => p.ts === ts);
+    return existingPoint ?? { ts, value: 0 };
+  });
+
+  return { data: paddedData, startTs, endTs, binSeconds };
 }
 
 function formatWindow(startTs: number, endTs: number): string {
