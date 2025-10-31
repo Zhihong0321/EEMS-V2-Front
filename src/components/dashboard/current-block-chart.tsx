@@ -45,7 +45,14 @@ function buildChartData(
   rawReadings: { ts: number; power_kw: number; sample_seconds: number }[] = []
 ): { data: ChartPoint[]; startTs: number; endTs: number; binSeconds: number } {
   if (!block) {
-    return { data: [], startTs: 0, endTs: 0, binSeconds: 30 };
+    const now = new Date();
+    const startTs = now.getTime();
+    const endTs = startTs + 30 * 60 * 1000;
+    const data = Array(60).fill(null).map((_, index) => ({
+      ts: startTs + (index + 1) * 30 * 1000,
+      value: 0,
+    }));
+    return { data, startTs, endTs, binSeconds: 30 };
   }
 
   if (mode !== "accumulate" && rawReadings.length > 0) {
@@ -65,6 +72,7 @@ function buildChartData(
   const startDate = new Date(block.block_start_local);
   const startTs = startDate.getTime();
   const endTs = startTs + 30 * 60 * 1000;
+  const numPoints = Math.floor((30 * 60) / binSeconds);
 
   let data: ChartPoint[] = [];
 
@@ -80,7 +88,14 @@ function buildChartData(
     }));
   }
 
-  return { data, startTs, endTs, binSeconds };
+  // Pad data to 60 points
+  const paddedData = Array(numPoints).fill(null).map((_, index) => {
+    const ts = startTs + (index + 1) * binSeconds * 1000;
+    const existingPoint = data.find(p => p.ts === ts);
+    return existingPoint ?? { ts, value: 0 };
+  });
+
+  return { data: paddedData, startTs, endTs, binSeconds };
 }
 
 function formatWindow(block: LatestBlock | null): string {
