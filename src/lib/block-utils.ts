@@ -31,7 +31,6 @@ export function getBlockStart(timestamp: string | Date): string {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
     hour12: false
   });
   
@@ -47,17 +46,53 @@ export function getBlockStart(timestamp: string | Date): string {
   // Round down to the nearest 30-minute block
   const roundedMinutes = Math.floor(minute / 30) * 30;
   
-  // Get timezone offset for the date by comparing UTC and timezone representations
-  const dateInTimezone = new Date(date.toLocaleString('en-US', { timeZone: TIMEZONE }));
-  const dateInUTC = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-  const offsetMs = dateInUTC.getTime() - dateInTimezone.getTime();
+  // Find the UTC time that represents this local time in the target timezone
+  // We use an iterative approach: start with an approximation and refine it
+  const desiredLocalMinutes = hour * 60 + roundedMinutes;
   
-  // Create UTC date from the local time components
-  const blockStartLocal = new Date(Date.UTC(year, month, day, hour, roundedMinutes, 0));
-  // Adjust by the offset to get the correct UTC time
-  const blockStartUTC = new Date(blockStartLocal.getTime() - offsetMs);
+  // Start with the original UTC time as a base
+  let candidateUTC = new Date(date.getTime());
   
-  return blockStartUTC.toISOString();
+  // Iterate to find the UTC time that produces the desired local time
+  // This handles timezone offsets correctly, including day boundaries
+  for (let i = 0; i < 10; i++) { // Max 10 iterations should be enough
+    const candidateParts = formatter.formatToParts(candidateUTC);
+    const getCandidatePart = (type: string) => candidateParts.find(p => p.type === type)!.value;
+    
+    const candidateYear = parseInt(getCandidatePart('year'));
+    const candidateMonth = parseInt(getCandidatePart('month')) - 1;
+    const candidateDay = parseInt(getCandidatePart('day'));
+    const candidateHour = parseInt(getCandidatePart('hour'));
+    const candidateMinute = parseInt(getCandidatePart('minute'));
+    
+    // Check if we have the right year, month, day, hour, and rounded minute
+    if (candidateYear === year && 
+        candidateMonth === month && 
+        candidateDay === day && 
+        candidateHour === hour && 
+        candidateMinute === roundedMinutes) {
+      return candidateUTC.toISOString();
+    }
+    
+    // Calculate the difference and adjust
+    const candidateLocalMinutes = candidateHour * 60 + candidateMinute;
+    const diffMinutes = desiredLocalMinutes - candidateLocalMinutes;
+    
+    // Also account for day changes
+    let dayDiff = 0;
+    if (candidateYear !== year || candidateMonth !== month || candidateDay !== day) {
+      // Day mismatch - adjust by a day
+      const candidateDate = new Date(candidateYear, candidateMonth, candidateDay);
+      const desiredDate = new Date(year, month, day);
+      dayDiff = Math.round((desiredDate.getTime() - candidateDate.getTime()) / (24 * 60 * 60 * 1000));
+    }
+    
+    // Adjust the candidate UTC time
+    candidateUTC = new Date(candidateUTC.getTime() + diffMinutes * 60 * 1000 + dayDiff * 24 * 60 * 60 * 1000);
+  }
+  
+  // Fallback: return the original date rounded to 30 minutes (won't be perfect but better than error)
+  return candidateUTC.toISOString();
 }
 
 /**
