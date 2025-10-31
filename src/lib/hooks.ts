@@ -215,7 +215,18 @@ export function useLatestBlock(
       const processEvent = (event: SseEvent) => {
         setState((prev) => {
           if (event.type === "reading") {
-            return { ...prev, lastReadingTs: event.ts };
+            const newReading = {
+              ts: new Date(event.ts).getTime(),
+              power_kw: event.power_kw,
+              sample_seconds: event.sample_seconds
+            };
+
+            // Keep the last 30 minutes of readings, assuming 2 readings per minute
+            const MAX_READINGS = 30 * 2 * 30; // 30x speed
+
+            const updatedReadings = [...prev.rawReadings, newReading].slice(-MAX_READINGS);
+
+            return { ...prev, lastReadingTs: event.ts, rawReadings: updatedReadings };
           }
           if (event.type === "alert-80pct") {
             if (!alertRef.current) {
@@ -249,7 +260,8 @@ export function useLatestBlock(
             return {
               ...prev,
               block: nextBlock,
-              error: null
+              error: null,
+              rawReadings: [] // Clear raw readings on new block
             };
           }
           return prev;
@@ -280,33 +292,7 @@ export function useLatestBlock(
     };
   }, [dismiss, initialBlock, onAlert80pct, onWindowChange, push, simulatorId]);
 
-  // Load raw readings from localStorage
-  const loadRawReadings = useCallback(() => {
-    if (!simulatorId) return;
-    const storageKey = `recent_ticks_${simulatorId}`;
-    const stored = localStorage.getItem(storageKey);
-    if (stored) {
-      const ticks = JSON.parse(stored);
-      const readings = ticks.map((tick: any) => ({
-        ts: tick.ts,
-        power_kw: tick.power_kw,
-        sample_seconds: tick.sample_seconds
-      }));
-      setState(prev => ({ ...prev, rawReadings: readings }));
-    }
-  }, [simulatorId]);
 
-  // Initial load
-  useEffect(() => {
-    loadRawReadings();
-  }, [loadRawReadings]);
-
-  // Poll every 1s for updates
-  useEffect(() => {
-    if (!state.connected) return;
-    const interval = setInterval(loadRawReadings, 1000);
-    return () => clearInterval(interval);
-  }, [state.connected, loadRawReadings]);
 
   return {
     block: state.block,
