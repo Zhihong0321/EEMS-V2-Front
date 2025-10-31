@@ -14,3 +14,5 @@ body {
 main {
   @apply flex min-h-screen flex-col;
 }
+
+/* Premium chart animations - color transitions handled via React state */

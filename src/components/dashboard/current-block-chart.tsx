@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import type { LatestBlock } from "@/lib/types";
 import { formatBlockWindow } from "@/lib/block-utils";
+import { useEffect, useRef, useState } from "react";
 
 const TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE_LABEL ?? "Asia/Kuala_Lumpur";
 
@@ -43,7 +44,68 @@ type ChartPoint = {
   ts: number;
   value: number;
   color?: string; // For color-coded bars in non-accumulate mode
+  percentOfTarget?: number; // Store percentage for gradient calculation
 };
+
+/**
+ * Generate smooth gradient color from green to red based on percentage
+ * 0% = green (#22c55e)
+ * 50% = yellow-green (#84cc16)
+ * 75% = yellow (#eab308)
+ * 90% = orange (#f97316)
+ * 100%+ = red (#ef4444)
+ */
+function getGradientColor(percentOfTarget: number): string {
+  // Clamp to 0-120% range for smooth transition
+  const clamped = Math.max(0, Math.min(120, percentOfTarget));
+  
+  if (clamped <= 50) {
+    // Green to yellow-green: 0% -> 50%
+    const ratio = clamped / 50;
+    return interpolateColor("#22c55e", "#84cc16", ratio);
+  } else if (clamped <= 75) {
+    // Yellow-green to yellow: 50% -> 75%
+    const ratio = (clamped - 50) / 25;
+    return interpolateColor("#84cc16", "#eab308", ratio);
+  } else if (clamped <= 90) {
+    // Yellow to orange: 75% -> 90%
+    const ratio = (clamped - 75) / 15;
+    return interpolateColor("#eab308", "#f97316", ratio);
+  } else if (clamped <= 100) {
+    // Orange to red: 90% -> 100%
+    const ratio = (clamped - 90) / 10;
+    return interpolateColor("#f97316", "#ef4444", ratio);
+  } else {
+    // 100%+ = deep red
+    const ratio = Math.min(1, (clamped - 100) / 20); // Darken up to 120%
+    return interpolateColor("#ef4444", "#dc2626", ratio);
+  }
+}
+
+/**
+ * Interpolate between two hex colors
+ */
+function interpolateColor(color1: string, color2: string, ratio: number): string {
+  const hex1 = color1.replace("#", "");
+  const hex2 = color2.replace("#", "");
+  
+  const r1 = parseInt(hex1.substr(0, 2), 16);
+  const g1 = parseInt(hex1.substr(2, 2), 16);
+  const b1 = parseInt(hex1.substr(4, 2), 16);
+  
+  const r2 = parseInt(hex2.substr(0, 2), 16);
+  const g2 = parseInt(hex2.substr(2, 2), 16);
+  const b2 = parseInt(hex2.substr(4, 2), 16);
+  
+  const r = Math.round(r1 + (r2 - r1) * ratio);
+  const g = Math.round(g1 + (g2 - g1) * ratio);
+  const b = Math.round(b1 + (b2 - b1) * ratio);
+  
+  return `#${[r, g, b].map(x => {
+    const hex = x.toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  }).join("")}`;
+}
 
 function buildChartData(
   block: LatestBlock | null,
@@ -86,20 +148,14 @@ function buildChartData(
       const peakUsage = value - (index === 0 ? 0 : points[index - 1]);
       const percentOfTarget = targetPerBin > 0 ? (peakUsage / targetPerBin) * 100 : 0;
       
-      // Color coding: <50% blue, <75% yellow, <90% orange, >=90% red
-      let color = "#3b82f6"; // blue (default)
-      if (percentOfTarget >= 90) {
-        color = "#ef4444"; // red
-      } else if (percentOfTarget >= 75) {
-        color = "#f97316"; // orange
-      } else if (percentOfTarget >= 50) {
-        color = "#eab308"; // yellow
-      }
+      // Use smooth gradient color function
+      const color = getGradientColor(percentOfTarget);
       
       return {
         ts: startTs + (index + 1) * binSeconds * 1000,
         value: peakUsage,
-        color
+        color,
+        percentOfTarget
       };
     });
   }
@@ -108,7 +164,7 @@ function buildChartData(
   const paddedData = Array(numPoints).fill(null).map((_, index) => {
     const ts = startTs + (index + 1) * binSeconds * 1000;
     const existingPoint = data.find(p => p.ts === ts);
-    return existingPoint ?? { ts, value: 0, color: "#3b82f6" };
+    return existingPoint ?? { ts, value: 0, color: "#22c55e", percentOfTarget: 0 };
   });
 
   return { data: paddedData, startTs, endTs, binSeconds };
@@ -134,15 +190,83 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
 
   const isAccumulate = mode === "accumulate";
 
-  // For non-accumulate mode, use BarChart with color-coded bars
+  // Track previous data to detect new bars for animation
+  const prevDataRef = useRef<ChartPoint[]>([]);
+  const [newBarIndices, setNewBarIndices] = useState<Set<number>>(new Set());
+  const [barColors, setBarColors] = useState<Map<number, string>>(new Map());
+
+  useEffect(() => {
+    if (isAccumulate || chartData.length === 0) {
+      prevDataRef.current = chartData;
+      return;
+    }
+
+    // Detect new bars (bars that have value > 0 when previous was 0 or didn't exist)
+    const newIndices = new Set<number>();
+    const updatedColors = new Map(barColors);
+    
+    chartData.forEach((point, index) => {
+      const prevPoint = prevDataRef.current[index];
+      const targetColor = point.color || "#22c55e";
+      
+      if (point.value > 0 && (!prevPoint || prevPoint.value === 0)) {
+        // New bar: start with green
+        newIndices.add(index);
+        updatedColors.set(index, "#22c55e");
+        
+        // Transition to target color after grow animation starts (200ms delay for visibility)
+        setTimeout(() => {
+          setBarColors(prev => {
+            const next = new Map(prev);
+            next.set(index, targetColor);
+            return next;
+          });
+        }, 200);
+      } else if (point.value > 0) {
+        // Existing bar: update color smoothly
+        updatedColors.set(index, targetColor);
+      }
+    });
+
+    if (newIndices.size > 0) {
+      setNewBarIndices(newIndices);
+      setBarColors(updatedColors);
+      // Clear animation flags after animation completes
+      setTimeout(() => {
+        setNewBarIndices(new Set());
+      }, 1000);
+    } else {
+      setBarColors(updatedColors);
+    }
+
+    prevDataRef.current = chartData;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartData, isAccumulate]);
+
+  // For non-accumulate mode, use BarChart with color-coded bars and animations
   const ChartComponent = isAccumulate ? LineChart : BarChart;
   const DataElement = isAccumulate ? (
-    <Line type="monotone" dataKey="value" stroke="#22d3ee" strokeWidth={2} dot={false} isAnimationActive={false} />
+    <Line type="monotone" dataKey="value" stroke="#22d3ee" strokeWidth={2} dot={false} isAnimationActive={true} animationDuration={800} />
   ) : (
-    <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive={false}>
-      {chartData.map((entry, index) => (
-        <Cell key={`cell-${index}`} fill={entry.color || "#3b82f6"} />
-      ))}
+    <Bar 
+      dataKey="value" 
+      radius={[4, 4, 0, 0]} 
+      isAnimationActive={true}
+      animationDuration={600}
+    >
+      {chartData.map((entry, index) => {
+        const currentColor = barColors.get(index) || entry.color || "#22c55e";
+        
+        return (
+          <Cell 
+            key={`cell-${index}`} 
+            fill={currentColor}
+            style={{
+              transition: "fill 0.7s cubic-bezier(0.4, 0, 0.2, 1)"
+            }}
+          />
+        );
+      })}
     </Bar>
   );
 
@@ -253,7 +377,22 @@ function CustomTooltip({ active, payload, label, target, targetPeakKwh, mode, bi
   // Non-accumulate mode: show peak usage and percentage of peak target
   const targetPerBin = targetPeakKwh ? targetPeakKwh / 60 : 0;
   const pct = targetPerBin > 0 ? ((value / targetPerBin) * 100).toFixed(1) : "0";
-  const color = payload[0]?.payload?.color || "#3b82f6";
+  const color = payload[0]?.payload?.color || "#22c55e";
+  
+  // Determine color label based on percentage
+  const pctNum = parseFloat(pct);
+  let colorLabel = "Green";
+  if (pctNum >= 100) {
+    colorLabel = "Red (≥100%)";
+  } else if (pctNum >= 90) {
+    colorLabel = "Orange-Red (90-100%)";
+  } else if (pctNum >= 75) {
+    colorLabel = "Yellow-Orange (75-90%)";
+  } else if (pctNum >= 50) {
+    colorLabel = "Yellow-Green (50-75%)";
+  } else {
+    colorLabel = "Green (<50%)";
+  }
   
   return (
     <div className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 shadow-lg">
@@ -261,9 +400,7 @@ function CustomTooltip({ active, payload, label, target, targetPeakKwh, mode, bi
       <p className="text-slate-400">Peak usage per {binSeconds}s · {pct}% of peak target</p>
       <div className="mt-1 flex items-center gap-2">
         <div className="h-3 w-3 rounded" style={{ backgroundColor: color }} />
-        <span className="text-slate-400">
-          {parseFloat(pct) >= 90 ? "Red (≥90%)" : parseFloat(pct) >= 75 ? "Orange (≥75%)" : parseFloat(pct) >= 50 ? "Yellow (≥50%)" : "Blue (<50%)"}
-        </span>
+        <span className="text-slate-400">{colorLabel}</span>
       </div>
     </div>
   );
