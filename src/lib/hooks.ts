@@ -316,7 +316,7 @@ export function useLatestBlock(
     reconnecting: state.reconnecting,
     lastReadingTs: state.lastReadingTs,
     rawReadings: state.rawReadings,
-    refresh: refreshBlock
+    refresh: refresh
   };
 }
 

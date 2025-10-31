@@ -109,8 +109,20 @@ export function DashboardContent({
 
       <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
         <CurrentBlockChart 
-          block={block ?? { start_ts: new Date().toISOString(), accumulated_kwh: 0, percent_of_target: 0, chart_bins: { bin_seconds: 30, points: [] } }} 
-          accumulate={chartMode === "accumulate"}
+          block={block ?? { 
+            simulator_id: simulatorId,
+            block_start_local: new Date().toISOString(), 
+            block_start_utc: new Date().toISOString(),
+            block_end_utc: new Date().toISOString(),
+            target_kwh: targetKwh ?? 0,
+            accumulated_kwh: 0, 
+            percent_of_target: 0, 
+            alerted_80pct: false,
+            chart_bins: { bin_seconds: 30, points: [] } 
+          }} 
+          loading={blockLoading}
+          targetKwh={targetKwh}
+          mode={chartMode}
           rawReadings={chartMode === "non-accumulate" ? rawReadings : undefined}
         />
         <div className="flex flex-col gap-6">
