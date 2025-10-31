@@ -5,8 +5,8 @@ import { ingestReadings, deleteFutureReadings, getLastReadingTimestamp } from ".
 import type { TickIn } from "./types";
 import { useToast } from "@/components/ui/toast-provider";
 
-const AUTO_INTERVAL_MS = 1_000;
-const MANUAL_INTERVAL_MS = 1_000;
+const AUTO_INTERVAL_MS = 2_000; // 2 seconds per signal (was 1 second)
+const MANUAL_INTERVAL_MS = 2_000; // 2 seconds per signal (was 1 second)
 const AUTO_SAMPLE_SECONDS = 30;
 const MANUAL_SAMPLE_SECONDS = 30;
 const FAST_FORWARD_MULTIPLIER = 30; // 30x speed: 1 real second = 30 simulated seconds

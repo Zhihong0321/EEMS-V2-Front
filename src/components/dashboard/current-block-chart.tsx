@@ -192,54 +192,74 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
 
   // Track previous data to detect new bars for animation
   const prevDataRef = useRef<ChartPoint[]>([]);
-  const [newBarIndices, setNewBarIndices] = useState<Set<number>>(new Set());
   const [barColors, setBarColors] = useState<Map<number, string>>(new Map());
+  const [animatedData, setAnimatedData] = useState<ChartPoint[]>([]);
 
   useEffect(() => {
     if (isAccumulate || chartData.length === 0) {
       prevDataRef.current = chartData;
+      setAnimatedData(chartData);
       return;
     }
 
-    // Detect new bars (bars that have value > 0 when previous was 0 or didn't exist)
-    const newIndices = new Set<number>();
+    // Create animated data where new bars start at 0 and animate to target value
     const updatedColors = new Map(barColors);
-    
-    chartData.forEach((point, index) => {
+    const hasNewBars = chartData.some((point, index) => {
       const prevPoint = prevDataRef.current[index];
-      const targetColor = point.color || "#22c55e";
-      
-      if (point.value > 0 && (!prevPoint || prevPoint.value === 0)) {
-        // New bar: start with green
-        newIndices.add(index);
-        updatedColors.set(index, "#22c55e");
-        
-        // Transition to target color after grow animation starts (200ms delay for visibility)
-        setTimeout(() => {
-          setBarColors(prev => {
-            const next = new Map(prev);
-            next.set(index, targetColor);
-            return next;
-          });
-        }, 200);
-      } else if (point.value > 0) {
-        // Existing bar: update color smoothly
-        updatedColors.set(index, targetColor);
-      }
+      return point.value > 0 && (!prevPoint || prevPoint.value === 0);
     });
 
-    if (newIndices.size > 0) {
-      setNewBarIndices(newIndices);
-      setBarColors(updatedColors);
-      // Clear animation flags after animation completes
-      setTimeout(() => {
-        setNewBarIndices(new Set());
-      }, 1000);
-    } else {
-      setBarColors(updatedColors);
-    }
+    if (hasNewBars) {
+      // Create initial data with new bars at 0
+      const initialData: ChartPoint[] = chartData.map((point, index) => {
+        const prevPoint = prevDataRef.current[index];
+        const targetColor = point.color || "#22c55e";
+        
+        // Check if this is a new bar
+        const isNewBar = point.value > 0 && (!prevPoint || prevPoint.value === 0);
+        
+        if (isNewBar) {
+          // New bar: start with green color
+          updatedColors.set(index, "#22c55e");
+          
+          // Transition to target color after grow animation starts (400ms delay)
+          setTimeout(() => {
+            setBarColors(prev => {
+              const next = new Map(prev);
+              next.set(index, targetColor);
+              return next;
+            });
+          }, 400);
+          
+          // Return bar with 0 value initially
+          return { ...point, value: 0, color: "#22c55e" };
+        } else {
+          // Existing bar: use actual value and color
+          updatedColors.set(index, targetColor);
+          return point;
+        }
+      });
 
-    prevDataRef.current = chartData;
+      // Set initial data (with new bars at 0)
+      setAnimatedData(initialData);
+      setBarColors(updatedColors);
+      
+      // After a brief delay, update to target values to trigger grow animation
+      const timeoutId = setTimeout(() => {
+        setAnimatedData(chartData);
+      }, 50);
+      
+      prevDataRef.current = chartData;
+      return () => clearTimeout(timeoutId);
+    } else {
+      // No new bars, update directly
+      chartData.forEach((point, index) => {
+        updatedColors.set(index, point.color || "#22c55e");
+      });
+      setBarColors(updatedColors);
+      setAnimatedData(chartData);
+      prevDataRef.current = chartData;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartData, isAccumulate]);
 
@@ -252,9 +272,10 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
       dataKey="value" 
       radius={[4, 4, 0, 0]} 
       isAnimationActive={true}
-      animationDuration={600}
+      animationDuration={1500}
+      animationBegin={0}
     >
-      {chartData.map((entry, index) => {
+      {animatedData.map((entry, index) => {
         const currentColor = barColors.get(index) || entry.color || "#22c55e";
         
         return (
@@ -262,7 +283,7 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
             key={`cell-${index}`} 
             fill={currentColor}
             style={{
-              transition: "fill 0.7s cubic-bezier(0.4, 0, 0.2, 1)"
+              transition: "fill 1.2s cubic-bezier(0.4, 0, 0.2, 1)"
             }}
           />
         );
@@ -315,7 +336,7 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <ChartComponent data={chartData} margin={{ left: 12, right: 12, top: 12, bottom: 12 }}>
+            <ChartComponent data={isAccumulate ? chartData : animatedData} margin={{ left: 12, right: 12, top: 12, bottom: 12 }}>
               <CartesianGrid strokeDasharray="4 4" stroke="#1f2937" />
               <XAxis
                 dataKey="ts"
