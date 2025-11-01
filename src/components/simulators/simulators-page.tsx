@@ -87,19 +87,10 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
   };
 
   const handleDelete = async (id: string) => {
-    console.log("handleDelete called with id:", id);
     setIsDeleting(true);
     try {
+      // Use the hook's delete function which handles errors and toasts
       await deleteSimulator(id);
-      console.log("handleDelete successful for id:", id);
-      push({ title: "Simulator deleted" });
-      // Refresh the list after deletion
-      refresh();
-    } catch (error) {
-      console.error("handleDelete error for id:", id, error);
-      const apiError = error as ApiErrorPayload;
-      const message = apiError.error?.message ?? apiError.message ?? "Unknown error";
-      push({ title: `Failed to delete simulator ${id}: ${message}`, variant: "error" });
     } finally {
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);

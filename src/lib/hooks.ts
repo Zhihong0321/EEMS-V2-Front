@@ -36,6 +36,18 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
     }
   }, [initialSimulators.length, refresh]);
 
+  // Auto-refresh on window focus to prevent stale data
+  useEffect(() => {
+    const handleFocus = () => {
+      void refresh();
+    };
+    
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [refresh]);
+
   const create = useCallback(
     async (input: CreateSimulatorInput) => {
       try {
@@ -81,11 +93,35 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
           variant: "success"
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to delete simulator";
+        // Provide user-friendly messages based on error type
+        let title = "Delete failed";
+        let description = "Failed to delete simulator";
+        
+        if (error instanceof Error) {
+          // Check if it's an API error with status code
+          const apiError = error as any;
+          if (apiError.status === 404) {
+            title = "Simulator not found";
+            description = "This simulator may have already been deleted";
+          } else if (apiError.status === 500 || apiError.status === 502 || apiError.status === 503) {
+            title = "Server error";
+            description = "The backend server encountered an error. Please try again.";
+          } else if (apiError.status === 401 || apiError.status === 403) {
+            title = "Permission denied";
+            description = "You don't have permission to delete this simulator";
+          } else if (!apiError.status) {
+            // Network error
+            title = "Connection failed";
+            description = "Could not connect to the server. Check your internet connection.";
+          } else {
+            description = error.message;
+          }
+        }
+        
         console.error("Delete simulator failed", error);
         push({
-          title: "Delete failed",
-          description: message,
+          title,
+          description,
           variant: "error"
         });
         throw error;
