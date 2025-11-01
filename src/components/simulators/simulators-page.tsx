@@ -84,18 +84,22 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deletingId) return;
-    setIsDeleting(true);
+  const handleDelete = async (id: string) => {
+    console.log("handleDelete called with id:", id);
+    setDeleting(true);
     try {
-      await deleteSimulator(deletingId);
-      setDeletingId(null);
-      setIsDeleteDialogOpen(false);
+      await deleteSimulator(id);
+      console.log("handleDelete successful for id:", id);
+      toast({ title: "Simulator deleted" });
+      // Refresh the list after deletion
+      mutate();
     } catch (error) {
-      // For simplicity, just log the error
-      console.error("Failed to delete simulator", error);
+      console.error("handleDelete error for id:", id, error);
+      const apiError = error as ApiError;
+      toast({ title: `Failed to delete simulator ${id}: ${apiError.message}`, variant: "destructive" });
     } finally {
-      setIsDeleting(false);
+      setDeleting(false);
+      setConfirmDelete(null);
     }
   };
 

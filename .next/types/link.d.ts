@@ -34,10 +34,10 @@ declare namespace __next_route_internal_types__ {
     | `/health`
     | `/test-features`
   type DynamicRoutes<T extends string = string> = 
-    | `/${SafeSlug<T>}`
-    | `/${SafeSlug<T>}/run`
     | `/api/bridge/${CatchAllSlug<T>}`
     | `/api/simulators/${SafeSlug<T>}`
+    | `/${SafeSlug<T>}`
+    | `/${SafeSlug<T>}/run`
 
   type RouteImpl<T> = 
     | StaticRoutes

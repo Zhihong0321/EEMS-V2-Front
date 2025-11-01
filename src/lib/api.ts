@@ -207,13 +207,20 @@ export async function createSimulator(input: CreateSimulatorInput): Promise<Simu
 }
 
 export async function deleteSimulator(id: string): Promise<void> {
-  await requestJson<void>(
-    `/api/v1/simulators/${id}`,
-    withWriteHeaders({
-      method: "DELETE",
-    }),
-    { retryDelays: [500, 1500] }
-  );
+  console.log("deleteSimulator called with id:", id);
+  try {
+    await requestJson<void>(
+      `/api/v1/simulators/${id}`,
+      withWriteHeaders({
+        method: "DELETE",
+      }),
+      { retryDelays: [500, 1500] }
+    );
+    console.log("deleteSimulator successful for id:", id);
+  } catch (error) {
+    console.error("deleteSimulator error for id:", id, error);
+    throw error;
+  }
 }
 
 export async function fetchLatestBlock(simulatorId: string): Promise<LatestBlock> {
