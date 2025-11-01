@@ -1,10 +1,11 @@
 "use client";
 
+import { useToast } from "@/components/ui/toast-provider";
 import { Fragment, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
 import { Dialog, Transition } from "@headlessui/react";
 import { useSimulators } from "@/lib/hooks";
-import type { Simulator } from "@/lib/types";
+import type { Simulator, ApiErrorPayload } from "@/lib/types";
 import clsx from "clsx";
 
 const TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE_LABEL ?? "Asia/Kuala_Lumpur";
@@ -26,6 +27,7 @@ type FormState = {
 };
 
 export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
+  const { push } = useToast();
   const { simulators, loading, refresh, create, delete: deleteSimulator } = useSimulators(initialSimulators);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>({ name: "", target: 500, whatsapp: "" });
@@ -86,20 +88,21 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
 
   const handleDelete = async (id: string) => {
     console.log("handleDelete called with id:", id);
-    setDeleting(true);
+    setIsDeleting(true);
     try {
       await deleteSimulator(id);
       console.log("handleDelete successful for id:", id);
-      toast({ title: "Simulator deleted" });
+      push({ title: "Simulator deleted" });
       // Refresh the list after deletion
-      mutate();
+      refresh();
     } catch (error) {
       console.error("handleDelete error for id:", id, error);
-      const apiError = error as ApiError;
-      toast({ title: `Failed to delete simulator ${id}: ${apiError.message}`, variant: "destructive" });
+      const apiError = error as ApiErrorPayload;
+      const message = apiError.error?.message ?? apiError.message ?? "Unknown error";
+      push({ title: `Failed to delete simulator ${id}: ${message}`, variant: "error" });
     } finally {
-      setDeleting(false);
-      setConfirmDelete(null);
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -194,7 +197,7 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
           <button
             type="button"
             onClick={() => setIsDialogOpen(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-cyan-600"
+            className="rounded-md bg-primary px-4 py_2 text-sm font-semibold text-primary-foreground transition hover:bg-cyan-600"
           >
             Create simulator
           </button>
@@ -222,7 +225,7 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
             setIsDeleteDialogOpen(false);
           }
         }}
-        onConfirm={handleDelete}
+        onConfirm={() => deletingId && handleDelete(deletingId)}
         deleting={isDeleting}
       />
     </section>
