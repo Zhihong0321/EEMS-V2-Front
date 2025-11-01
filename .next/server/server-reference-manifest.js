@@ -1,1 +1,1 @@
-self.__RSC_SERVER_MANIFEST="{\"node\":{\"efb0857e5ce64b4f2753ab7d9962cb75a627b704\":{\"workers\":{\"app/dashboard/page\":\"8169\"},\"layer\":{\"app/dashboard/page\":\"rsc\"}}},\"edge\":{},\"encryptionKey\":\"RPsWDZbZ96JIojsdFYERAzi2jcEMwjGF0CGR4TCAyC4=\"}"
+self.__RSC_SERVER_MANIFEST="{\"node\":{\"efb0857e5ce64b4f2753ab7d9962cb75a627b704\":{\"workers\":{\"app/dashboard/page\":\"38169\"},\"layer\":{\"app/dashboard/page\":\"rsc\"}}},\"edge\":{},\"encryptionKey\":\"uLPEleJRtdrxF5GRPM0u70CdWpJFh2MqYx4Pn0nmO4g=\"}"
