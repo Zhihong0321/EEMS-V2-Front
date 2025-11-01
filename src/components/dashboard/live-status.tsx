@@ -9,6 +9,7 @@ type LiveStatusProps = {
   lastReadingTs?: string;
   block?: LatestBlock | null;
   targetKwh?: number;
+  targetPeakKwh?: number; // Target accumulated_kwh for 30min block (used in non-accumulate mode)
 };
 
 const TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE_LABEL ?? "Asia/Kuala_Lumpur";
@@ -104,7 +105,7 @@ function calculateProjection(block: LatestBlock | null | undefined, targetKwh: n
   };
 }
 
-export function LiveStatus({ connected, reconnecting, lastReadingTs, block, targetKwh }: LiveStatusProps) {
+export function LiveStatus({ connected, reconnecting, lastReadingTs, block, targetKwh, targetPeakKwh }: LiveStatusProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Update time every second for smooth bucket animation
@@ -128,8 +129,9 @@ export function LiveStatus({ connected, reconnecting, lastReadingTs, block, targ
 
   const formatted = lastReadingTs ? timeFormatter.format(new Date(lastReadingTs)) : "—";
 
-  // Calculate projection (time updates every second via useEffect, triggering fresh calculation)
-  const effectiveTarget = targetKwh ?? block?.target_kwh ?? 0;
+  // Calculate projection
+  // Use targetPeakKwh if provided (non-accumulate mode), otherwise use targetKwh (accumulate mode)
+  const effectiveTarget = targetPeakKwh ?? targetKwh ?? block?.target_kwh ?? 0;
   const projection = calculateProjection(block, effectiveTarget);
 
   return (

@@ -38,7 +38,7 @@ type CurrentBlockChartProps = {
   block: LatestBlock | null;
   loading: boolean;
   targetKwh?: number;
-  targetPeakKwh?: number; // Targeted peak usage per 30min block (for non-accumulate mode)
+  targetPeakKwh?: number; // Target accumulated_kwh for the 30-minute block (for non-accumulate mode)
   mode: "accumulate" | "non-accumulate";
   lastReadingTs?: string | null; // Last reading timestamp to determine current block
 };
@@ -145,6 +145,8 @@ function buildChartData(
     }));
   } else {
     // Non-accumulate mode: calculate peak usage per bin and add color coding
+    // targetPeakKwh is the TOTAL accumulated target for the 30-minute block
+    // Divide by 60 bins (assuming 30-second bins) to get target per bin
     const targetPerBin = targetPeakKwh ? targetPeakKwh / 60 : 0; // 30min block = 60 bins of 30sec
     
     data = points.map((value, index) => {
@@ -360,7 +362,7 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
             </>
           ) : (
             <>
-              Peak Target {targetPeakKwh?.toFixed(1) ?? "—"} kWh/30min · Target per bin {(targetPeakKwh ? targetPeakKwh / 60 : 0).toFixed(3)} kWh
+              Target {targetPeakKwh?.toFixed(1) ?? "—"} kWh (total for 30min) · Target per bin {(targetPeakKwh ? targetPeakKwh / 60 : 0).toFixed(3)} kWh
             </>
           )}
         </div>

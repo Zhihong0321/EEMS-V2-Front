@@ -44,7 +44,7 @@ export function CombinedDashboard({
   const [volatility, setVolatility] = useState(12);
   const [sliderValue, setSliderValue] = useState(0.5);
   const [maxKw, setMaxKw] = useState(800);
-  const [targetPeakKwh, setTargetPeakKwh] = useState(100); // Targeted peak usage per 30min block
+  const [targetPeakKwh, setTargetPeakKwh] = useState(100); // Target accumulated_kwh for the 30-minute block
 
   const manualPowerKw = useMemo(() => sliderValue * maxKw, [sliderValue, maxKw]);
 
@@ -155,7 +155,7 @@ export function CombinedDashboard({
         </select>
         {chartMode === "non-accumulate" && (
           <>
-            <label className="text-sm text-slate-300 sm:ml-4">Target Peak Usage (kWh per 30min):</label>
+            <label className="text-sm text-slate-300 sm:ml-4">Target Accumulated Usage (kWh for 30min block):</label>
             <input
               type="number"
               value={targetPeakKwh}
@@ -195,6 +195,7 @@ export function CombinedDashboard({
             lastReadingTs={effectiveLastReadingTs ?? undefined}
             block={block}
             targetKwh={targetKwh}
+            targetPeakKwh={chartMode === "non-accumulate" ? targetPeakKwh : undefined}
           />
           <BlockHistoryTiles history={history} loading={historyLoading} />
         </div>
