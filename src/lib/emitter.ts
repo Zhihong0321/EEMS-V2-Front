@@ -5,10 +5,9 @@ import { ingestReadings, deleteFutureReadings, getLastReadingTimestamp } from ".
 import type { TickIn } from "./types";
 import { useToast } from "@/components/ui/toast-provider";
 
-const AUTO_INTERVAL_MS = 2_000; // 2 seconds per signal (was 1 second)
-const MANUAL_INTERVAL_MS = 2_000; // 2 seconds per signal (was 1 second)
-const AUTO_SAMPLE_SECONDS = 30;
-const MANUAL_SAMPLE_SECONDS = 30;
+// Shared constants for both auto and manual emitters
+const EMITTER_INTERVAL_MS = 2_000; // 2 seconds per signal
+const EMITTER_SAMPLE_SECONDS = 30; // Sample duration in seconds
 const FAST_FORWARD_MULTIPLIER = 30; // 30x speed: 1 real second = 30 simulated seconds
 const MAX_FAILURES = 3;
 
@@ -213,14 +212,14 @@ export function useAutoEmitter(
     const powerKw = Math.max(0, baseKw * (1 + randomDelta));
     return {
       power_kw: Number(powerKw.toFixed(3)),
-      sample_seconds: AUTO_SAMPLE_SECONDS,
+      sample_seconds: EMITTER_SAMPLE_SECONDS,
       device_ts: new Date().toISOString() // Will be overridden in emitter if fast-forward enabled
     };
   }, [baseKw, volatilityPct]);
 
   return useEmitter({
     simulatorId,
-    intervalMs: AUTO_INTERVAL_MS,
+    intervalMs: EMITTER_INTERVAL_MS,
     mode: "auto",
     getTick,
     fastForwardEnabled,
@@ -238,14 +237,14 @@ export function useManualEmitter(
     const powerKw = Math.max(0, getPowerKw());
     return {
       power_kw: Number(powerKw.toFixed(3)),
-      sample_seconds: MANUAL_SAMPLE_SECONDS,
+      sample_seconds: EMITTER_SAMPLE_SECONDS,
       device_ts: new Date().toISOString() // Will be overridden in emitter if fast-forward enabled
     };
   }, [getPowerKw]);
 
   return useEmitter({
     simulatorId,
-    intervalMs: MANUAL_INTERVAL_MS,
+    intervalMs: EMITTER_INTERVAL_MS,
     mode: "manual",
     getTick,
     fastForwardEnabled,
