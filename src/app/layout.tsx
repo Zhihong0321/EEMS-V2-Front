@@ -18,7 +18,7 @@ export default function RootLayout({
       <body className="flex min-h-screen flex-col">
         <ToastProvider>
           <div className="flex grow flex-col">
-            <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur">
+            <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur relative z-50">
               <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-6 px-6 py-4">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-lg font-semibold text-primary-foreground">
@@ -32,19 +32,22 @@ export default function RootLayout({
                 <nav className="flex flex-1 items-center justify-end gap-4 text-sm text-slate-400">
                   <Link
                     href="/"
-                    className="rounded-md px-3 py-2 transition hover:bg-slate-800/80 hover:text-white"
+                    className="rounded-md px-3 py-2 transition hover:bg-slate-800/80 hover:text-white relative z-10"
+                    prefetch={true}
                   >
                     Simulators
                   </Link>
                   <Link
                     href="/health"
-                    className="rounded-md px-3 py-2 transition hover:bg-slate-800/80 hover:text-white"
+                    className="rounded-md px-3 py-2 transition hover:bg-slate-800/80 hover:text-white relative z-10"
+                    prefetch={true}
                   >
                     Health check
                   </Link>
                   <Link
                     href="/test-features"
-                    className="rounded-md px-3 py-2 transition hover:bg-slate-800/80 hover:text-white"
+                    className="rounded-md px-3 py-2 transition hover:bg-slate-800/80 hover:text-white relative z-10"
+                    prefetch={true}
                   >
                     Test Features
                   </Link>
