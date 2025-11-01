@@ -101,8 +101,8 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
           // Check if it's an API error with status code
           const apiError = error as any;
           if (apiError.status === 404) {
-            title = "Simulator not found";
-            description = "This simulator may have already been deleted";
+            title = "Delete not supported";
+            description = "Backend DELETE endpoint not implemented. Contact backend team to add DELETE /api/v1/simulators/{id}";
           } else if (apiError.status === 500 || apiError.status === 502 || apiError.status === 503) {
             title = "Server error";
             description = "The backend server encountered an error. Please try again.";

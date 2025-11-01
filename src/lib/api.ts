@@ -218,12 +218,6 @@ export async function deleteSimulator(id: string): Promise<void> {
     );
     console.log("deleteSimulator successful for id:", id);
   } catch (error) {
-    // If simulator doesn't exist (404), treat as successful deletion
-    // since the desired end state is achieved
-    if (error instanceof ApiError && error.status === 404) {
-      console.log("deleteSimulator: simulator not found (already deleted), treating as success");
-      return;
-    }
     console.error("deleteSimulator error for id:", id, error);
     throw error;
   }
