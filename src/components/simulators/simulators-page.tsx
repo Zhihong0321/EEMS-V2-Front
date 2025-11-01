@@ -6,7 +6,12 @@ import Link from "next/link";
 import { Dialog, Transition } from "@headlessui/react";
 import { useSimulators } from "@/lib/hooks";
 import type { Simulator, ApiErrorPayload } from "@/lib/types";
-import clsx from "clsx";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input, InputWrapper } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { DocumentTextIcon } from "@heroicons/react/24/outline";
 
 const TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE_LABEL ?? "Asia/Kuala_Lumpur";
 
@@ -98,101 +103,102 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
   };
 
   return (
-    <section className="space-y-10">
+    <section className="space-y-10 animate-fadeIn">
       <header className="space-y-3">
-        <h1 className="text-3xl font-semibold text-white">Simulators</h1>
-        <p className="max-w-2xl text-sm text-slate-400">
+        <h1>Simulators</h1>
+        <p className="max-w-2xl text-sm sm:text-base text-slate-400">
           Connect to an existing simulator profile or create a new one. Each profile produces live readings feeding the EMS dashboard.
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="md"
             onClick={() => setIsDialogOpen(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-cyan-600"
           >
             New simulator
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              void refresh();
-            }}
-            className="rounded-md border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-600 hover:text-white"
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => void refresh()}
+            isLoading={loading}
             disabled={loading}
           >
             {loading ? "Refreshing…" : "Refresh list"}
-          </button>
+          </Button>
           <span className="text-xs text-slate-500">Last activity snapshot: {lastUpdatedLabel}</span>
         </div>
       </header>
 
       {hasSimulators ? (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2 animate-slideUp">
           {simulators.map((sim) => {
             const latestBlock = sim.latest_block;
             const lastWindow = latestBlock?.block_start_local ?? sim.updated_at ?? sim.created_at;
             const lastActivity = lastWindow ? timeFormatter.format(new Date(lastWindow)) : "—";
             const percent = latestBlock?.percent_of_target;
             const percentLabel = percent != null ? `${percent.toFixed(1)}%` : "—";
-            const percentVariant = percent != null ? (percent > 100 ? "text-danger" : percent >= 80 ? "text-warning" : "text-success") : "text-slate-400";
+            const badgeVariant = percent != null 
+              ? (percent > 100 ? "danger" : percent >= 80 ? "warning" : "success") 
+              : "neutral";
             return (
-              <article key={sim.id} className="flex flex-col justify-between rounded-xl border border-slate-800 bg-slate-900/60 p-6">
-                <div className="space-y-3">
-                  <h2 className="text-xl font-semibold text-white">{sim.name}</h2>
-                  <dl className="grid grid-cols-2 gap-2 text-sm text-slate-400">
-                    <div>
-                      <dt className="text-xs uppercase tracking-widest text-slate-500">Target kWh</dt>
-                      <dd className="text-base text-slate-100">{sim.target_kwh.toFixed(1)}</dd>
+              <Card key={sim.id} variant="default">
+                <CardContent className="flex flex-col justify-between min-h-[200px]">
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <h2 className="text-lg sm:text-xl font-semibold text-white">{sim.name}</h2>
+                      <Badge variant={badgeVariant}>{percentLabel}</Badge>
                     </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-widest text-slate-500">Last activity</dt>
-                      <dd className="text-base text-slate-100">{lastActivity}</dd>
-                    </div>
-                  </dl>
-                  <p className="text-xs text-slate-500">
-                    Latest block progress: <span className={percentVariant}>{percentLabel}</span>
-                  </p>
-                </div>
-                <div className="mt-6 flex gap-3">
-                  <Link
-                    href={`/${sim.id}`}
-                    className="inline-flex flex-1 items-center justify-center rounded-md border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-primary hover:text-white"
-                  >
-                    Open dashboard
-                  </Link>
-                  <Link
-                    href={`/${sim.id}/run`}
-                    className="inline-flex flex-1 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-cyan-600"
-                  >
-                    Run simulator
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDeletingId(sim.id);
-                      setIsDeleteDialogOpen(true);
-                    }}
-                    className="inline-flex items-center justify-center rounded-md border border-transparent px-4 py-2 text-sm font-semibold text-danger transition hover:bg-danger/10"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </article>
+                    <dl className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="space-y-1">
+                        <dt className="text-xs uppercase tracking-widest text-slate-500">Target kWh</dt>
+                        <dd className="text-base font-medium text-slate-100">{sim.target_kwh.toFixed(1)}</dd>
+                      </div>
+                      <div className="space-y-1">
+                        <dt className="text-xs uppercase tracking-widest text-slate-500">Last activity</dt>
+                        <dd className="text-base font-medium text-slate-100">{lastActivity}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                  <div className="mt-6 flex flex-col sm:flex-row gap-2">
+                    <Link href={`/${sim.id}`} className="flex-1">
+                      <Button variant="secondary" size="md" className="w-full">
+                        Dashboard
+                      </Button>
+                    </Link>
+                    <Link href={`/${sim.id}/run`} className="flex-1">
+                      <Button variant="primary" size="md" className="w-full">
+                        Run
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="md"
+                      onClick={() => {
+                        setDeletingId(sim.id);
+                        setIsDeleteDialogOpen(true);
+                      }}
+                      className="text-danger hover:text-danger hover:bg-danger/10"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             );
           })}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 p-10 text-center">
-          <p className="text-lg font-semibold text-white">No simulators yet</p>
-          <p className="text-sm text-slate-400">Create your first simulator to start sending readings to the EMS backend.</p>
-          <button
-            type="button"
-            onClick={() => setIsDialogOpen(true)}
-            className="rounded-md bg-primary px-4 py_2 text-sm font-semibold text-primary-foreground transition hover:bg-cyan-600"
-          >
-            Create simulator
-          </button>
-        </div>
+        <EmptyState
+          icon={<DocumentTextIcon className="h-12 w-12" />}
+          title="No simulators yet"
+          description="Create your first simulator to start sending readings to the EMS backend."
+          action={
+            <Button variant="primary" size="md" onClick={() => setIsDialogOpen(true)}>
+              Create simulator
+            </Button>
+          }
+        />
       )}
 
       <CreateSimulatorDialog
@@ -273,64 +279,71 @@ function CreateSimulatorDialog({ open, onClose, form, onFormChange, onSubmit, su
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 text-left align-middle shadow-xl transition-all">
-                <Dialog.Title className="text-lg font-semibold text-white">Create simulator</Dialog.Title>
-                <p className="mt-1 text-sm text-slate-400">
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-900/95 backdrop-blur-xl p-6 text-left align-middle shadow-2xl ring-1 ring-white/5 transition-all">
+                <Dialog.Title className="text-xl font-semibold text-white tracking-tight">Create simulator</Dialog.Title>
+                <p className="mt-2 text-sm text-slate-400 leading-relaxed">
                   Provide a friendly name, target kWh, and optional WhatsApp number for alerting. Enter digits only (no plus sign).
                 </p>
                 <form className="mt-6 space-y-4" onSubmit={onSubmit}>
-                  <label className="flex flex-col gap-2 text-sm">
-                    <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Name</span>
-                    <input
+                  <InputWrapper label="Name" required error={error && form.name.trim() === '' ? 'Name is required' : undefined}>
+                    <Input
                       type="text"
                       required
                       value={form.name}
                       onChange={updateField("name")}
-                      className="w-full rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none"
+                      placeholder="Enter simulator name"
+                      error={!!error && form.name.trim() === ''}
                     />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm">
-                    <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Target kWh</span>
-                    <input
+                  </InputWrapper>
+                  
+                  <InputWrapper label="Target kWh" required>
+                    <Input
                       type="number"
                       min={1}
                       step={1}
                       value={form.target}
                       onChange={updateField("target")}
-                      className="w-full rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none"
+                      placeholder="e.g. 500"
                     />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm">
-                    <span className="text-xs uppercase tracking-[0.2em] text-slate-500">WhatsApp number (digits only, optional)</span>
-                    <input
+                  </InputWrapper>
+                  
+                  <InputWrapper 
+                    label="WhatsApp number" 
+                    helperText="Digits only (no plus sign). Optional for alerts."
+                  >
+                    <Input
                       type="tel"
                       inputMode="numeric"
                       pattern="\d*"
                       value={form.whatsapp}
                       onChange={updateField("whatsapp")}
-                      className="w-full rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none"
+                      placeholder="e.g. 60123456789"
                     />
-                  </label>
-                  {error ? <p className="text-xs text-danger">{error}</p> : null}
-                  <div className="flex justify-end gap-3 pt-2">
-                    <button
+                  </InputWrapper>
+                  
+                  {error && !form.name.trim() === false && <p className="text-xs text-danger">{error}</p>}
+                  
+                  <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-2">
+                    <Button
                       type="button"
+                      variant="secondary"
+                      size="md"
                       onClick={onClose}
-                      className="rounded-md border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white"
                       disabled={submitting}
+                      className="w-full sm:w-auto"
                     >
                       Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="submit"
+                      variant="primary"
+                      size="md"
+                      isLoading={submitting}
                       disabled={submitting}
-                      className={clsx(
-                        "rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition",
-                        submitting ? "opacity-60" : "hover:bg-cyan-600"
-                      )}
+                      className="w-full sm:w-auto"
                     >
                       {submitting ? "Creating…" : "Create"}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </Dialog.Panel>
@@ -376,31 +389,42 @@ function DeleteConfirmationDialog({ open, onClose, onConfirm, deleting }: Delete
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 text-left align-middle shadow-xl transition-all">
-                <Dialog.Title className="text-lg font-semibold text-white">Confirm Deletion</Dialog.Title>
-                <p className="mt-2 text-sm text-slate-400">
-                  Are you sure you want to delete this simulator? This action cannot be undone.
-                </p>
-                <div className="mt-6 flex justify-end gap-3">
-                  <button
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl border border-danger/20 bg-slate-900/95 backdrop-blur-xl p-6 text-left align-middle shadow-2xl ring-1 ring-danger/10 transition-all">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="flex-shrink-0 rounded-full bg-danger/10 p-3">
+                    <svg className="h-6 w-6 text-danger" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <Dialog.Title className="text-xl font-semibold text-white tracking-tight">Confirm Deletion</Dialog.Title>
+                    <p className="mt-2 text-sm text-slate-400 leading-relaxed">
+                      Are you sure you want to delete this simulator? This action cannot be undone.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
+                  <Button
                     type="button"
+                    variant="secondary"
+                    size="md"
                     onClick={onClose}
-                    className="rounded-md border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white"
                     disabled={deleting}
+                    className="w-full sm:w-auto"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="danger"
+                    size="md"
                     onClick={onConfirm}
+                    isLoading={deleting}
                     disabled={deleting}
-                    className={clsx(
-                      "rounded-md bg-danger px-4 py-2 text-sm font-semibold text-white transition",
-                      deleting ? "opacity-60" : "hover:bg-danger/80"
-                    )}
+                    className="w-full sm:w-auto"
                   >
                     {deleting ? "Deleting…" : "Delete"}
-                  </button>
+                  </Button>
                 </div>
               </Dialog.Panel>
             </Transition.Child>

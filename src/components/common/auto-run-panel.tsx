@@ -5,7 +5,8 @@
 
 import type { ChangeEvent } from "react";
 import { BoltIcon, PlayIcon, StopIcon } from "@heroicons/react/24/outline";
-import clsx from "clsx";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export type AutoRunPanelProps = {
   baseKw: number;
@@ -56,10 +57,10 @@ export function AutoRunPanel({
   const formattedLastSent = lastSentAt ? timeFormatter.format(new Date(lastSentAt)) : "—";
 
   return (
-    <article className="flex flex-col gap-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+    <article className="flex flex-col gap-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm p-6 shadow-md hover:shadow-lg transition-shadow duration-300">
       <header className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-white">Auto mode</h2>
+          <h3 className="text-xl font-semibold text-white">Auto mode</h3>
           <p className="text-sm text-slate-400">Emit one tick every second with gaussian noise. Fast-forward mode advances simulated time by 30 seconds per real second.</p>
         </div>
         <BoltIcon className="h-8 w-8 text-cyan-500" aria-hidden="true" />
@@ -67,25 +68,23 @@ export function AutoRunPanel({
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-2 text-sm">
           <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Base kW</span>
-          <input
+          <Input
             type="number"
             min={0}
             step={1}
             value={baseKw}
             onChange={handleBaseChange}
-            className="w-full rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none"
           />
         </label>
         <label className="flex flex-col gap-2 text-sm">
           <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Volatility %</span>
-          <input
+          <Input
             type="number"
             min={0}
             max={100}
             step={1}
             value={volatility}
             onChange={handleVolatilityChange}
-            className="w-full rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none"
           />
         </label>
       </div>
@@ -96,18 +95,12 @@ export function AutoRunPanel({
           <span className="font-semibold text-slate-200">{numberFormatter.format(Math.round(baseKw * (1 + volatility / 100)))}</span> kW
         </p>
       </div>
-      <button
-        type="button"
+      <Button
+        variant={isRunning ? "danger" : "primary"}
+        size="md"
         onClick={isRunning ? onStop : onStart}
         disabled={disabled}
-        className={clsx(
-          "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
-          disabled
-            ? "cursor-not-allowed bg-slate-800/60 text-slate-500"
-            : isRunning
-              ? "bg-danger/80 text-white hover:bg-danger"
-              : "bg-primary text-primary-foreground hover:bg-cyan-600"
-        )}
+        className="w-full"
       >
         {isRunning ? (
           <>
@@ -118,7 +111,7 @@ export function AutoRunPanel({
             <PlayIcon className="h-4 w-4" aria-hidden="true" /> Start auto run
           </>
         )}
-      </button>
+      </Button>
       {disabled && disabledReason ? (
         <p className="text-xs text-warning">{disabledReason}</p>
       ) : null}

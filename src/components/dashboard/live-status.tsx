@@ -135,9 +135,9 @@ export function LiveStatus({ connected, reconnecting, lastReadingTs, block, targ
   const projection = calculateProjection(block, effectiveTarget);
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-      <h2 className="text-lg font-semibold text-white">Live status</h2>
-      <div className="mt-4 flex items-center gap-3">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm p-6 shadow-md hover:shadow-lg transition-shadow duration-300" role="region" aria-label="Live connection status and usage projection">
+      <h3 className="text-lg font-semibold text-white">Live status</h3>
+      <div className="mt-4 flex items-center gap-3" role="status" aria-live="polite">
         <span className={`h-3 w-3 rounded-full ${indicatorClass}`} aria-hidden="true" />
         <span className="text-sm text-slate-200">{statusText}</span>
       </div>
@@ -225,7 +225,7 @@ export function LiveStatus({ connected, reconnecting, lastReadingTs, block, targ
           </div>
 
           {/* Projection Status LED Box */}
-          <div className={`${projection.color} rounded-lg p-4 text-center shadow-lg`}>
+          <div className={`${projection.color} rounded-lg p-4 text-center shadow-lg`} role="status" aria-live="polite" aria-label={`Usage projection: ${projection.status}`}>
             <div className="text-2xl font-bold text-white">{projection.status}</div>
             <div className="mt-2 text-xs text-white/90">
               Projected: {projection.projectedTotal.toFixed(2)} kWh

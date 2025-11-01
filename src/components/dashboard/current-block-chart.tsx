@@ -21,6 +21,8 @@ import {
 import type { LatestBlock } from "@/lib/types";
 import { formatBlockWindow } from "@/lib/block-utils";
 import { useEffect, useRef, useState } from "react";
+import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
+import { Button } from "@/components/ui/button";
 
 const TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE_LABEL ?? "Asia/Kuala_Lumpur";
 
@@ -349,20 +351,33 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
   ) : null;
 
   return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-6">
-      <header className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-4">
-        <div>
-          <h2 className="text-lg sm:text-xl font-semibold text-white">Current 30-minute block</h2>
-          <p className="text-xs sm:text-sm text-slate-400">Window {windowLabel}</p>
+    <article className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm p-4 sm:p-6 shadow-md hover:shadow-lg transition-shadow duration-300" role="region" aria-label="Current block chart">
+      <header className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4">
+        <div className="flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg sm:text-xl font-semibold text-white">Current 30-minute block</h3>
+              <p className="text-xs sm:text-sm text-slate-400">Window {windowLabel}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-slate-400 hover:text-white"
+              aria-label="Export chart data"
+              title="Export data (Coming soon)"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
         </div>
-        <div className="rounded-md border border-slate-800 px-3 sm:px-4 py-2 text-xs text-slate-400">
+        <div className="rounded-md border border-slate-800 bg-slate-900/40 px-3 sm:px-4 py-2 text-xs text-slate-400">
           {isAccumulate ? (
             <>
               Target {resolvedTarget.toFixed(1)} kWh · Accumulated {block?.accumulated_kwh.toFixed(2) ?? "—"} kWh
             </>
           ) : (
             <>
-              Target {targetPeakKwh?.toFixed(1) ?? "—"} kWh (total for 30min) · Target per bin {(targetPeakKwh ? targetPeakKwh / 60 : 0).toFixed(3)} kWh
+              Target {targetPeakKwh?.toFixed(1) ?? "—"} kWh (total) · Per bin {(targetPeakKwh ? targetPeakKwh / 60 : 0).toFixed(3)} kWh
             </>
           )}
         </div>
@@ -434,10 +449,31 @@ function CustomTooltip({ active, payload, label, target, targetPeakKwh, mode, bi
 
   if (isAccumulate) {
     const pct = target > 0 ? ((value / target) * 100).toFixed(1) : "0";
+    const pctNum = parseFloat(pct);
     return (
-      <div className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 shadow-lg">
-        <p className="font-semibold">{timeLabel} · {tooltipFormatter.format(value)} kWh</p>
-        <p className="text-slate-400">Accumulated · {pct}% of target</p>
+      <div className="rounded-xl border border-slate-600/50 bg-slate-900/98 backdrop-blur-md p-4 shadow-2xl ring-1 ring-white/5">
+        <div className="mb-2 pb-2 border-b border-slate-700/50">
+          <p className="text-sm font-semibold text-white">{timeLabel}</p>
+          <p className="text-xs text-slate-400">Accumulated reading</p>
+        </div>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-xs text-slate-400">Accumulated:</span>
+            <span className="text-sm font-medium text-emerald-400">{tooltipFormatter.format(value)} kWh</span>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-xs text-slate-400">Target:</span>
+            <span className="text-sm font-medium text-slate-300">{tooltipFormatter.format(target)} kWh</span>
+          </div>
+          <div className="mt-2 pt-2 border-t border-slate-700/50">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-xs text-slate-400">Progress:</span>
+              <span className={`text-sm font-semibold ${pctNum > 100 ? 'text-danger' : pctNum > 90 ? 'text-warning' : 'text-success'}`}>
+                {pct}%
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -463,12 +499,29 @@ function CustomTooltip({ active, payload, label, target, targetPeakKwh, mode, bi
   }
   
   return (
-    <div className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 shadow-lg">
-      <p className="font-semibold">{timeLabel} · {tooltipFormatter.format(value)} kWh</p>
-      <p className="text-slate-400">Peak usage per {binSeconds}s · {pct}% of peak target</p>
-      <div className="mt-1 flex items-center gap-2">
-        <div className="h-3 w-3 rounded" style={{ backgroundColor: color }} />
-        <span className="text-slate-400">{colorLabel}</span>
+    <div className="rounded-xl border border-slate-600/50 bg-slate-900/98 backdrop-blur-md p-4 shadow-2xl ring-1 ring-white/5">
+      <div className="mb-2 pb-2 border-b border-slate-700/50">
+        <p className="text-sm font-semibold text-white">{timeLabel}</p>
+        <p className="text-xs text-slate-400">Peak usage reading ({binSeconds}s)</p>
+      </div>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-xs text-slate-400">Usage:</span>
+          <span className="text-sm font-medium text-cyan-400">{tooltipFormatter.format(value)} kWh</span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-xs text-slate-400">Target/bin:</span>
+          <span className="text-sm font-medium text-slate-300">{tooltipFormatter.format(targetPerBin)} kWh</span>
+        </div>
+        <div className="mt-2 pt-2 border-t border-slate-700/50">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-xs text-slate-400">Intensity:</span>
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
+              <span className="text-xs font-medium text-slate-300">{colorLabel}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
