@@ -1,5 +1,8 @@
 "use client";
 
+// RESPONSIVE-AWARE: Chart height adjusts for mobile (h-48) and desktop (md:h-72)
+// See docs/RESPONSIVE.md for responsive development guidelines
+
 import {
   Area,
   AreaChart,
@@ -344,13 +347,13 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
   ) : null;
 
   return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-6">
+      <header className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-white">Current 30-minute block</h2>
-          <p className="text-sm text-slate-400">Window {windowLabel}</p>
+          <h2 className="text-lg sm:text-xl font-semibold text-white">Current 30-minute block</h2>
+          <p className="text-xs sm:text-sm text-slate-400">Window {windowLabel}</p>
         </div>
-        <div className="rounded-md border border-slate-800 px-4 py-2 text-xs text-slate-400">
+        <div className="rounded-md border border-slate-800 px-3 sm:px-4 py-2 text-xs text-slate-400">
           {isAccumulate ? (
             <>
               Target {resolvedTarget.toFixed(1)} kWh · Accumulated {block?.accumulated_kwh.toFixed(2) ?? "—"} kWh
@@ -362,7 +365,7 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
           )}
         </div>
       </header>
-      <div className="h-72 w-full">
+      <div className="h-48 md:h-72 w-full">
         {loading && !block ? (
           // Only show loading on initial load (when block is null)
           <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40">

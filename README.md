@@ -9,6 +9,7 @@
 **Live updates:** Server-Sent Events (SSE) to Backend
 **Deploy:** Railway (Node runtime)
 **Business timezone:** `Asia/Kuala_Lumpur` (for display only; logic is handled by backend)
+**Responsive:** Mobile-friendly using responsive-aware development approach (see `docs/RESPONSIVE.md`)
 
 ---
 

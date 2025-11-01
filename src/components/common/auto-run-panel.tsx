@@ -1,5 +1,8 @@
 "use client";
 
+// RESPONSIVE-AWARE: Uses responsive classes for mobile-friendly layout
+// See docs/RESPONSIVE.md for guidelines
+
 import type { ChangeEvent } from "react";
 import { BoltIcon, PlayIcon, StopIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
