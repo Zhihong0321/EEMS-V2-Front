@@ -206,6 +206,16 @@ export async function createSimulator(input: CreateSimulatorInput): Promise<Simu
   return response;
 }
 
+export async function deleteSimulator(id: string): Promise<void> {
+  await requestJson<void>(
+    `/api/v1/simulators/${id}`,
+    withWriteHeaders({
+      method: "DELETE"
+    }),
+    { retryDelays: [500, 1500] }
+  );
+}
+
 export async function fetchLatestBlock(simulatorId: string): Promise<LatestBlock> {
   return await getJson<LatestBlock>(`/api/v1/blocks/latest?simulator_id=${encodeURIComponent(simulatorId)}`);
 }

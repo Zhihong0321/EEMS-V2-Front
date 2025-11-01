@@ -26,11 +26,13 @@ type FormState = {
 };
 
 export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
-  const { simulators, loading, refresh, create } = useSimulators(initialSimulators);
+  const { simulators, loading, refresh, create, delete: deleteSimulator } = useSimulators(initialSimulators);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>({ name: "", target: 500, whatsapp: "" });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const hasSimulators = simulators.length > 0;
 
@@ -78,6 +80,18 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
       setFormError(message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    try {
+      await deleteSimulator(deletingId);
+      setDeletingId(null);
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      // For simplicity, just log the error
+      console.error("Failed to delete simulator", error);
     }
   };
 
@@ -150,6 +164,16 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
                   >
                     Run simulator
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeletingId(sim.id);
+                      setIsDeleteDialogOpen(true);
+                    }}
+                    className="inline-flex items-center justify-center rounded-md border border-transparent px-4 py-2 text-sm font-semibold text-danger transition hover:bg-danger/10"
+                  >
+                    Delete
+                  </button>
                 </div>
               </article>
             );
@@ -182,6 +206,15 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
         onSubmit={handleSubmit}
         submitting={submitting}
         error={formError}
+      />
+      <DeleteConfirmationDialog
+        open={isDeleteDialogOpen}
+        onClose={() => {
+          setDeletingId(null);
+          setIsDeleteDialogOpen(false);
+        }}
+        onConfirm={handleDelete}
+        deleting={deletingId !== null}
       />
     </section>
   );
@@ -297,6 +330,75 @@ function CreateSimulatorDialog({ open, onClose, form, onFormChange, onSubmit, su
                     </button>
                   </div>
                 </form>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
+        </div>
+      </Dialog>
+    </Transition>
+  );
+}
+
+type DeleteConfirmationDialogProps = {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  deleting: boolean;
+};
+
+function DeleteConfirmationDialog({ open, onClose, onConfirm, deleting }: DeleteConfirmationDialogProps) {
+  return (
+    <Transition appear show={open} as={Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={onClose}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-200"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-150"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black/50" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-200"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-150"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 text-left align-middle shadow-xl transition-all">
+                <Dialog.Title className="text-lg font-semibold text-white">Confirm Deletion</Dialog.Title>
+                <p className="mt-2 text-sm text-slate-400">
+                  Are you sure you want to delete this simulator? This action cannot be undone.
+                </p>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded-md border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white"
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onConfirm}
+                    disabled={deleting}
+                    className={clsx(
+                      "rounded-md bg-danger px-4 py-2 text-sm font-semibold text-white transition",
+                      deleting ? "opacity-60" : "hover:bg-danger/80"
+                    )}
+                  >
+                    {deleting ? "Deleting…" : "Delete"}
+                  </button>
+                </div>
               </Dialog.Panel>
             </Transition.Child>
           </div>

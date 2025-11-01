@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createSimulator, fetchBlockHistory, fetchLatestBlock, getSimulators, simulatorEndpoint } from "./api";
+import { createSimulator, deleteSimulator, fetchBlockHistory, fetchLatestBlock, getSimulators, simulatorEndpoint } from "./api";
 import type { CreateSimulatorInput, HistoryBlock, LatestBlock, Simulator, SseEvent } from "./types";
 import { useToast } from "@/components/ui/toast-provider";
 
@@ -67,9 +67,36 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
     [push, refresh]
   );
 
+  const del = useCallback(
+    async (id: string) => {
+      try {
+        await deleteSimulator(id);
+        // After a successful delete, filter the item out of the local state
+        // for an immediate UI update, then trigger a full refresh from the
+        // server to ensure consistency.
+        setSimulators((prev) => prev.filter((sim) => sim.id !== id));
+        void refresh();
+        push({
+          title: "Simulator deleted",
+          variant: "success"
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to delete simulator";
+        console.error("Delete simulator failed", error);
+        push({
+          title: "Delete failed",
+          description: message,
+          variant: "error"
+        });
+        throw error;
+      }
+    },
+    [push, refresh]
+  );
+
   return useMemo(
-    () => ({ simulators, loading, error, refresh, create }),
-    [simulators, loading, error, refresh, create]
+    () => ({ simulators, loading, error, refresh, create, delete: del }),
+    [simulators, loading, error, refresh, create, del]
   );
 }
 
