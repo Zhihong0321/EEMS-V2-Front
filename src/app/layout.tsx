@@ -42,6 +42,12 @@ export default function RootLayout({
                   >
                     Health check
                   </Link>
+                  <Link
+                    href="/test-features"
+                    className="rounded-md px-3 py-2 transition hover:bg-slate-800/80 hover:text-white"
+                  >
+                    Test Features
+                  </Link>
                   <span className="rounded-md border border-slate-800 px-3 py-2 text-slate-400">
                     Timezone: {process.env.NEXT_PUBLIC_TIMEZONE_LABEL ?? "Asia/Kuala_Lumpur"}
                   </span>
