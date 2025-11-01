@@ -89,28 +89,4 @@ export async function getWhatsAppStatus(): Promise<WhatsAppStatusResponse> {
   }
 }
 
-/**
- * Get QR code for device linking
- */
-export async function getWhatsAppQR(): Promise<string | null> {
-  try {
-    const response = await fetch(`${WHATSAPP_API_URL}/api/qr`, {
-      method: "GET"
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    // QR code is returned as an image, convert to data URL
-    const blob = await response.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(blob);
-    });
-  } catch (error) {
-    return null;
-  }
-}
 

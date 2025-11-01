@@ -1,1 +1,1 @@
-{"/_not-found/page":"/_not-found","/(sim)/[id]/page":"/[id]","/dashboard/page":"/dashboard","/(sim)/[id]/run/page":"/[id]/run","/page":"/","/test-features/page":"/test-features","/api/bridge/[...path]/route":"/api/bridge/[...path]","/health/page":"/health"}
+{"/_not-found/page":"/_not-found","/(sim)/[id]/page":"/[id]","/(sim)/[id]/run/page":"/[id]/run","/dashboard/page":"/dashboard","/test-features/page":"/test-features","/page":"/","/health/page":"/health","/api/bridge/[...path]/route":"/api/bridge/[...path]"}

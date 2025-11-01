@@ -130,7 +130,8 @@ export function DashboardContent({
             connected={connected}
             reconnecting={reconnecting}
             lastReadingTs={lastReadingTs}
-            simulatorId={simulatorId}
+            block={block}
+            targetKwh={targetKwh}
           />
           <BlockHistoryTiles history={history} loading={historyLoading} />
         </div>

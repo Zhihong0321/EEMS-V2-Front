@@ -4,9 +4,9 @@
 // See docs/RESPONSIVE.md for guidelines
 
 import { useState } from "react";
-import { sendWhatsAppMessage, getWhatsAppStatus, getWhatsAppQR } from "@/lib/whatsapp-api";
+import { sendWhatsAppMessage, getWhatsAppStatus } from "@/lib/whatsapp-api";
 import { useToast } from "@/components/ui/toast-provider";
-import { PaperAirplaneIcon, QrCodeIcon } from "@heroicons/react/24/outline";
+import { PaperAirplaneIcon, SignalIcon } from "@heroicons/react/24/outline";
 
 export default function TestFeaturesPage() {
   const { push } = useToast();
@@ -14,9 +14,7 @@ export default function TestFeaturesPage() {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState<{ status: string; connected: boolean } | null>(null);
-  const [qrCode, setQrCode] = useState<string | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
-  const [loadingQR, setLoadingQR] = useState(false);
 
   const handleSend = async () => {
     if (!to.trim() || !message.trim()) {
@@ -82,34 +80,6 @@ export default function TestFeaturesPage() {
     }
   };
 
-  const handleGetQR = async () => {
-    setLoadingQR(true);
-    try {
-      const qr = await getWhatsAppQR();
-      if (qr) {
-        setQrCode(qr);
-        push({
-          title: "QR Code Loaded",
-          description: "Scan this QR code with WhatsApp to link your device",
-          variant: "success"
-        });
-      } else {
-        push({
-          title: "Error",
-          description: "Failed to load QR code",
-          variant: "error"
-        });
-      }
-    } catch (error) {
-      push({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to get QR code",
-        variant: "error"
-      });
-    } finally {
-      setLoadingQR(false);
-    }
-  };
 
   return (
     <section className="space-y-8">
@@ -175,15 +145,15 @@ export default function TestFeaturesPage() {
           </div>
         </article>
 
-        {/* Status & QR Code Card */}
+        {/* Status Card */}
         <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
           <header className="mb-6">
             <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-              <QrCodeIcon className="h-6 w-6" />
-              WhatsApp Connection
+              <SignalIcon className="h-6 w-6" />
+              WhatsApp Connection Status
             </h2>
             <p className="text-sm text-slate-400 mt-1">
-              Check connection status and get QR code
+              Check WhatsApp connection status
             </p>
           </header>
 
@@ -211,25 +181,6 @@ export default function TestFeaturesPage() {
                 </div>
               )}
             </div>
-
-            <div>
-              <button
-                onClick={handleGetQR}
-                disabled={loadingQR}
-                className="w-full rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px]"
-              >
-                {loadingQR ? "Loading..." : "Get QR Code"}
-              </button>
-              {qrCode && (
-                <div className="mt-3 flex justify-center">
-                  <img
-                    src={qrCode}
-                    alt="WhatsApp QR Code"
-                    className="rounded-md border border-slate-700 max-w-full"
-                  />
-                </div>
-              )}
-            </div>
           </div>
         </article>
       </div>
@@ -242,7 +193,6 @@ export default function TestFeaturesPage() {
           <ul className="list-disc list-inside ml-2 space-y-1">
             <li>POST /api/send - Send WhatsApp message</li>
             <li>GET /api/status - Get connection status</li>
-            <li>GET /api/qr - Get QR code for device linking</li>
           </ul>
         </div>
       </div>

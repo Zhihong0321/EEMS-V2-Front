@@ -193,7 +193,8 @@ export function CombinedDashboard({
             connected={connected}
             reconnecting={reconnecting}
             lastReadingTs={effectiveLastReadingTs ?? undefined}
-            simulatorId={simulatorId}
+            block={block}
+            targetKwh={targetKwh}
           />
           <BlockHistoryTiles history={history} loading={historyLoading} />
         </div>
