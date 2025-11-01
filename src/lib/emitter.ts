@@ -37,6 +37,13 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick, fastForwardEnabled
   const startRef = useRef<() => void>(() => {});
   // Track the last simulated timestamp for fast-forward mode
   const lastSimulatedTsRef = useRef<Date | null>(null);
+  // Store the latest getTick function in a ref so the interval always uses the latest version
+  const getTickRef = useRef(getTick);
+  
+  // Update the ref whenever getTick changes
+  useEffect(() => {
+    getTickRef.current = getTick;
+  }, [getTick]);
 
   const stop = useCallback(() => {
     if (timerRef.current) {
@@ -52,8 +59,8 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick, fastForwardEnabled
       return;
     }
 
-    // Get the base tick
-    let tick = getTick();
+    // Get the base tick using the ref to ensure we always use the latest getTick function
+    let tick = getTickRef.current();
 
     // Apply fast-forward timestamp if enabled
     if (fastForwardEnabled) {
@@ -120,7 +127,7 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick, fastForwardEnabled
         });
       }
     }
-  }, [fastForwardEnabled, getTick, intervalMs, mode, onTickSent, push, simulatorId, stop]);
+  }, [fastForwardEnabled, intervalMs, mode, onTickSent, push, simulatorId, stop]);
 
   const start = useCallback(async () => {
     if (!simulatorId) {
