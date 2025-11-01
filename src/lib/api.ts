@@ -210,7 +210,7 @@ export async function deleteSimulator(id: string): Promise<void> {
   await requestJson<void>(
     `/api/v1/simulators/${id}`,
     withWriteHeaders({
-      method: "DELETE"
+      method: "DELETE",
     }),
     { retryDelays: [500, 1500] }
   );
