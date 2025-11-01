@@ -33,6 +33,7 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
   const [formError, setFormError] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const hasSimulators = simulators.length > 0;
 
@@ -85,6 +86,7 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
 
   const handleDelete = async () => {
     if (!deletingId) return;
+    setIsDeleting(true);
     try {
       await deleteSimulator(deletingId);
       setDeletingId(null);
@@ -92,6 +94,8 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
     } catch (error) {
       // For simplicity, just log the error
       console.error("Failed to delete simulator", error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -210,11 +214,12 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
       <DeleteConfirmationDialog
         open={isDeleteDialogOpen}
         onClose={() => {
-          setDeletingId(null);
-          setIsDeleteDialogOpen(false);
+          if (!isDeleting) {
+            setIsDeleteDialogOpen(false);
+          }
         }}
         onConfirm={handleDelete}
-        deleting={deletingId !== null}
+        deleting={isDeleting}
       />
     </section>
   );
@@ -348,7 +353,7 @@ type DeleteConfirmationDialogProps = {
 
 function DeleteConfirmationDialog({ open, onClose, onConfirm, deleting }: DeleteConfirmationDialogProps) {
   return (
-    <Transition appear show={open} as={Fragment}>
+    <Transition as={Fragment} show={open}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
         <Transition.Child
           as={Fragment}

@@ -1,3 +1,7 @@
+import { config } from "dotenv";
+
+config({ path: ".env.local" });
+
 /**
  * Quick verification script to POST /api/v1/simulators and print the response.
  *

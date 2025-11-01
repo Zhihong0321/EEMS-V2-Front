@@ -30,6 +30,8 @@ export default function RootLayout({
                       height={40}
                       className="h-10 w-auto"
                       priority
+                      quality={100}
+                      style={{ objectFit: 'contain' }}
                     />
                     <div>
                       <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Eternalgy EMS</p>
