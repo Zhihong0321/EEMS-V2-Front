@@ -166,7 +166,9 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
                   >
                     Run simulator
                   </Link>
-                  <button
+                  {/* Delete button hidden: Backend DELETE endpoint not implemented yet */}
+                  {/* TODO: Uncomment when backend adds DELETE /api/v1/simulators/{id} */}
+                  {/* <button
                     type="button"
                     onClick={() => {
                       setDeletingId(sim.id);
@@ -175,7 +177,7 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
                     className="inline-flex items-center justify-center rounded-md border border-transparent px-4 py-2 text-sm font-semibold text-danger transition hover:bg-danger/10"
                   >
                     Delete
-                  </button>
+                  </button> */}
                 </div>
               </article>
             );
