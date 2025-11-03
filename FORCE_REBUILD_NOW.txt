@@ -1,0 +1,13 @@
+FORCE REBUILD - DELETE THIS FILE AFTER DEPLOYMENT WORKS
+
+Timestamp: 2025-11-03T08:50:00.000Z
+Random: 0.123456789
+Build ID: EMERGENCY_REBUILD_001
+
+This file exists to force Railway to do a complete rebuild.
+If you can see this file in your deployed site, then deployments are working.
+If not, Railway deployment is completely broken.
+
+TEST URL: /FORCE_REBUILD_NOW.txt
+
+This should be accessible as a static file if deployment works.

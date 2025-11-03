@@ -104,8 +104,13 @@ type RequestOptions = {
 
 async function requestJson<T>(path: string, init?: RequestInit, options: RequestOptions = {}): Promise<T> {
   let url = buildUrl(path);
+  // On the server (SSR/RSC), Node's fetch requires an absolute URL.
+  // Using 'localhost' can resolve to IPv6 ::1 and default to port 80, causing ECONNREFUSED on platforms like Railway
+  // where Next.js listens on PORT (e.g., 8080). Prefer SITE_URL if provided, otherwise 127.0.0.1:PORT.
   if (typeof window === 'undefined') {
-    url = `http://localhost${url}`;
+    const port = process.env.PORT || '3000';
+    const origin = process.env.SITE_URL || `http://127.0.0.1:${port}`;
+    url = `${origin}${url}`;
   }
   const retryDelays = options.retryDelays ?? [];
   let attempt = 0;

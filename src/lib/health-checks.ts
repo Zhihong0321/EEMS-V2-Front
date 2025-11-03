@@ -22,7 +22,13 @@ async function performRequest(path: string, init?: RequestInit): Promise<FetchRe
     };
   }
 
-  const url = simulatorEndpoint(path);
+  let url = simulatorEndpoint(path);
+  // Ensure absolute URL for server-side requests to avoid Node fetch errors and wrong localhost port.
+  if (typeof window === 'undefined') {
+    const port = process.env.PORT || '3000';
+    const origin = process.env.SITE_URL || `http://127.0.0.1:${port}`;
+    url = `${origin}${url}`;
+  }
   const started = Date.now();
   try {
     const response = await fetch(url, init);

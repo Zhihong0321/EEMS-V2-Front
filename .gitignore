@@ -1,1 +1,21 @@
+# Dependencies
 node_modules
+
+# Next.js build output (must never be committed)
+.next
+out
+
+# Env files (do not track secrets)
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.production.local
+.env.test.local
+!.env.example
+
+# Logs
+logs.*.log
+
+# Misc
+.DS_Store

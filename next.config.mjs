@@ -7,11 +7,13 @@ const nextConfig = {
   // Force cache busting
   generateEtags: false,
   poweredByHeader: false,
-  // Force complete cache busting
+  // Force complete cache busting with version tracking
   env: {
     BUILD_TIME: new Date().toISOString(),
     CACHE_BUST: Date.now().toString(),
-    FORCE_REBUILD: "v2.0-" + Date.now()
+    FORCE_REBUILD: "v47-" + Date.now(),
+    DEPLOYMENT_VERSION: "v47-KIRO-TEST",
+    BUILD_ID: "build-" + Math.random().toString(36).substr(2, 9)
   },
   // Disable all caching
   headers: async () => [
