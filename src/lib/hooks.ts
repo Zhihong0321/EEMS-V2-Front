@@ -6,6 +6,8 @@ import type { CreateSimulatorInput, HistoryBlock, LatestBlock, Simulator, SseEve
 import { useToast } from "@/components/ui/toast-provider";
 import { notificationManager } from "./notification-manager";
 
+console.log('🚀 [HOOKS] Hooks file loaded, notificationManager imported:', !!notificationManager);
+
 export function useSimulators(initialSimulators: Simulator[] = []) {
   const { push } = useToast();
   const [simulators, setSimulators] = useState<Simulator[]>(initialSimulators);
@@ -311,6 +313,7 @@ export function useLatestBlock(
             return prev;
           }
           if (event.type === "block-update") {
+            console.log('🔄 [SSE] Block-update event received:', event);
             const previousBlock = prev.block;
             const nextBlock: LatestBlock | null = previousBlock
               ? {

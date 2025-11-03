@@ -416,8 +416,11 @@ Please check your energy consumption and take appropriate action.`;
 // Default notification manager instance
 export const notificationManager = new NotificationManager();
 
+console.log('🚀 [INIT] NotificationManager loaded and ready');
+
 // Debug function for manual testing (available in browser console)
 if (typeof window !== 'undefined') {
+  console.log('🚀 [INIT] Adding testNotifications to window');
   (window as any).testNotifications = async (simulatorId: string, percentage: number) => {
     console.log(`🧪 [TEST] Manual notification test: ${simulatorId} at ${percentage}%`);
     try {
@@ -426,5 +429,11 @@ if (typeof window !== 'undefined') {
     } catch (error) {
       console.error(`🧪 [TEST] Manual test failed:`, error);
     }
+  };
+  
+  // Also add a simple test function
+  (window as any).simpleTest = () => {
+    console.log('🧪 [SIMPLE] Simple test function works!');
+    console.log('🧪 [SIMPLE] NotificationManager available:', !!notificationManager);
   };
 }
