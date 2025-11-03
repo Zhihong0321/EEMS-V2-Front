@@ -4,12 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/deployment-alert.js build_start && next build && node scripts/deployment-alert.js build_success || (node scripts/deployment-alert.js build_failure && exit 1)",
-    "start": "node scripts/deployment-alert.js deployment_success && next start -p ${PORT:-3000}",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
     "lint": "next lint",
-    "verify:create-simulator": "node scripts/verify/create-simulator.ts",
-    "alert": "node scripts/deployment-alert.js",
-    "test:alerts": "node scripts/deployment-alert.js build_start && node scripts/deployment-alert.js build_success && node scripts/deployment-alert.js deployment_success"
+    "verify:create-simulator": "node scripts/verify/create-simulator.ts"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",

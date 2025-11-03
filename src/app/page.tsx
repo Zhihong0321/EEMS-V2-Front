@@ -13,5 +13,16 @@ export default async function WelcomePage() {
   // Force cache busting
   const buildTime = new Date().toISOString();
 
-  return <SimulatorsPage initialSimulators={simulators} />;
+  // Cache busting indicator
+  const cacheId = Math.random().toString(36).substr(2, 9);
+  
+  return (
+    <>
+      {/* CACHE BUSTING INDICATOR - REMOVE AFTER CONFIRMING */}
+      <div className="bg-green-600 text-white text-center py-2 px-4 text-sm font-bold mb-4">
+        🔄 CACHE FIXED: {cacheId} | {buildTime.slice(11, 19)}
+      </div>
+      <SimulatorsPage initialSimulators={simulators} />
+    </>
+  );
 }

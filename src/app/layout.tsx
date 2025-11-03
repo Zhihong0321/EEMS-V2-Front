@@ -5,7 +5,12 @@ import { AppHeader } from "@/components/layout/app-header";
 
 export const metadata: Metadata = {
   title: "Eternalgy EMS",
-  description: "Prototype UI for Eternalgy's energy management simulator"
+  description: "Prototype UI for Eternalgy's energy management simulator",
+  other: {
+    'cache-control': 'no-cache, no-store, must-revalidate',
+    'pragma': 'no-cache',
+    'expires': '0'
+  }
 };
 
 export default function RootLayout({
@@ -15,9 +20,10 @@ export default function RootLayout({
 }) {
   // Deployment Validator - UPDATE THIS WITH EACH COMMIT
   const DEPLOYMENT_INFO = {
-    commitTitle: "Fix JSX syntax error in simulators page", // UPDATE THIS WITH EACH COMMIT
+    commitTitle: "Remove deployment alerts and fix caching", // UPDATE THIS WITH EACH COMMIT
     buildTime: process.env.BUILD_TIME || new Date().toISOString(),
-    buildId: process.env.BUILD_ID || "dev"
+    buildId: process.env.BUILD_ID || "dev",
+    uniqueId: Math.random().toString(36).substr(2, 9) // Force cache bust
   };
 
   return (
@@ -41,6 +47,10 @@ export default function RootLayout({
                   <span className="hidden sm:inline text-slate-600">•</span>
                   <span className="text-slate-600">
                     Build: {DEPLOYMENT_INFO.buildTime.slice(0, 16)}
+                  </span>
+                  <span className="hidden sm:inline text-slate-600">•</span>
+                  <span className="text-slate-600">
+                    ID: {DEPLOYMENT_INFO.uniqueId}
                   </span>
                 </div>
               </div>
