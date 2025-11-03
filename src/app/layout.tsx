@@ -20,7 +20,7 @@ export default function RootLayout({
 }) {
   // Deployment Validator - UPDATE THIS WITH EACH COMMIT
   const DEPLOYMENT_INFO = {
-    commitTitle: "NEW BRANCH: cache-fix-v2 deployment test", // UPDATE THIS WITH EACH COMMIT
+    commitTitle: "Fix Railway Metal Build Environment issue", // UPDATE THIS WITH EACH COMMIT
     buildTime: process.env.BUILD_TIME || new Date().toISOString(),
     buildId: process.env.BUILD_ID || "dev",
     uniqueId: Math.random().toString(36).substr(2, 9) // Force cache bust
