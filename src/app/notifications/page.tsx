@@ -16,7 +16,7 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     loadSimulators();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadSimulators = async () => {
     try {
