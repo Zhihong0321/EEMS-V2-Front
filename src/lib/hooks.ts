@@ -71,16 +71,46 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
       try {
         const simulator = await createSimulator(input);
         
-        // Send startup notification
+        // Send startup notification and log to history
         try {
+          console.log('🚀 [STARTUP] Sending startup notification...');
+          
+          const phoneNumber = '60123456789'; // Replace with your number
+          const message = `🚀 Simulator Started!\n\nName: ${simulator.name}\nTarget: ${simulator.target_kwh} kWh\nTime: ${new Date().toLocaleString()}\n\nYour energy simulator is now running!`;
+          
+          // Send via WhatsApp API
           const { sendWhatsAppMessage } = await import('./whatsapp-api');
-          await sendWhatsAppMessage({
-            to: '60123456789', // Replace with your number
-            message: `🚀 Simulator Started!\n\nName: ${simulator.name}\nTarget: ${simulator.target_kwh} kWh\nTime: ${new Date().toLocaleString()}\n\nYour energy simulator is now running!`
+          const result = await sendWhatsAppMessage({
+            to: phoneNumber,
+            message: message
           });
-          console.log('✅ Startup notification sent');
+          
+          // Create fake trigger for history logging
+          const startupTrigger = {
+            id: `startup-${Date.now()}`,
+            simulatorId: simulator.id,
+            phoneNumber: phoneNumber,
+            thresholdPercentage: 0,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+          // Log to notification history
+          const { createNotificationHistory } = await import('./notification-storage');
+          const historyEntry = createNotificationHistory(
+            startupTrigger,
+            0, // percentage
+            result.success,
+            result.success ? undefined : (result.error || 'Failed to send startup notification')
+          );
+          
+          const storage = new (await import('./notification-storage')).LocalStorageNotificationStorage();
+          await storage.saveNotificationHistory(historyEntry);
+          
+          console.log(`${result.success ? '✅' : '❌'} [STARTUP] Startup notification ${result.success ? 'sent' : 'failed'} and logged to history`);
         } catch (error) {
-          console.error('❌ Failed to send startup notification:', error);
+          console.error('❌ [STARTUP] Error sending startup notification:', error);
         }
         
         // After a successful create, refresh from the server to ensure we show

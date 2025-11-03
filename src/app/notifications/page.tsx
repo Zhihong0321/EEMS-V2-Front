@@ -132,15 +132,42 @@ export default function NotificationsPage() {
                 <button
                   onClick={async () => {
                     try {
+                      const phoneNumber = '60123456789'; // Replace with your number
+                      const message = `🧪 TEST NOTIFICATION\n\nTime: ${new Date().toLocaleString()}\nSimulator: ${selectedSimulator?.name}\n\nThis is a test message from your EMS system!`;
+                      
+                      // Send via WhatsApp API
                       const { sendWhatsAppMessage } = await import('@/lib/whatsapp-api');
                       const result = await sendWhatsAppMessage({
-                        to: '60123456789', // Replace with your number
-                        message: `🧪 TEST NOTIFICATION\n\nTime: ${new Date().toLocaleString()}\nSimulator: ${selectedSimulator?.name}\n\nThis is a test message from your EMS system!`
+                        to: phoneNumber,
+                        message: message
                       });
+                      
+                      // Log to notification history
+                      const testTrigger = {
+                        id: `test-${Date.now()}`,
+                        simulatorId: selectedSimulatorId,
+                        phoneNumber: phoneNumber,
+                        thresholdPercentage: 0,
+                        isActive: true,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                      };
+                      
+                      const { createNotificationHistory, LocalStorageNotificationStorage } = await import('@/lib/notification-storage');
+                      const historyEntry = createNotificationHistory(
+                        testTrigger,
+                        0, // percentage
+                        result.success,
+                        result.success ? undefined : (result.error || 'Failed to send test notification')
+                      );
+                      
+                      const storage = new LocalStorageNotificationStorage();
+                      await storage.saveNotificationHistory(historyEntry);
+                      
                       if (result.success) {
-                        alert('✅ Test notification sent successfully!');
+                        alert('✅ Test notification sent and logged to history!');
                       } else {
-                        alert('❌ Failed to send test notification: ' + result.error);
+                        alert('❌ Failed to send test notification: ' + result.error + '\n(Still logged to history)');
                       }
                     } catch (error) {
                       alert('❌ Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
