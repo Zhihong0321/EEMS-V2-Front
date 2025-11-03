@@ -18,9 +18,14 @@ export default async function WelcomePage() {
   
   return (
     <>
-      {/* CACHE BUSTING INDICATOR - REMOVE AFTER CONFIRMING */}
-      <div className="bg-green-600 text-white text-center py-2 px-4 text-sm font-bold mb-4">
-        🔄 CACHE FIXED: {cacheId} | {buildTime.slice(11, 19)}
+      {/* MASSIVE CACHE BUSTING INDICATOR - IMPOSSIBLE TO MISS */}
+      <div className="bg-red-500 text-white text-center py-12 px-8 text-4xl font-bold mb-8 border-8 border-yellow-400 animate-pulse">
+        🚨 NEW BRANCH DEPLOYED! 🚨
+        <br />
+        <div className="text-2xl mt-4 bg-yellow-500 text-black px-6 py-3 rounded-lg inline-block animate-bounce">
+          CACHE-FIX-V2: {cacheId}
+        </div>
+        <div className="text-lg mt-2">Build: {buildTime}</div>
       </div>
       <SimulatorsPage initialSimulators={simulators} />
     </>
