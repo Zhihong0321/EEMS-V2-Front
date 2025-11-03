@@ -279,6 +279,11 @@ export function CombinedDashboard({
         </div>
       </div>
 
+      {/* KIRO TEST BANNER - PROOF OF GITHUB SYNC */}
+      <div className="bg-yellow-500 text-black text-center py-3 px-4 font-bold rounded-lg mb-6 animate-bounce">
+        ⚡ KIRO TEST: Dashboard updated - GitHub sync working! ⚡
+      </div>
+
       {/* Simulator Controls Section (Bottom) - Responsive: stacks on mobile */}
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-4">
