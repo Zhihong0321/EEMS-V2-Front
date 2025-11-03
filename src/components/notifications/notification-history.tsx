@@ -111,9 +111,18 @@ function HistoryItem({ history }: { history: NotificationHistory }) {
                 {history.success ? 'Sent' : 'Failed'}
               </div>
 
-              {/* Threshold Info */}
-              <div className="px-2 py-1 rounded-full bg-slate-700/50 text-slate-300 text-xs">
-                {history.actualPercentage.toFixed(1)}% / {history.thresholdPercentage}%
+              {/* Notification Type */}
+              <div className={clsx(
+                "px-2 py-1 rounded-full text-xs font-medium",
+                history.notificationType === 'startup' 
+                  ? "bg-green-700/50 text-green-300" 
+                  : history.notificationType === 'shutdown'
+                  ? "bg-red-700/50 text-red-300"
+                  : "bg-slate-700/50 text-slate-300"
+              )}>
+                {history.notificationType === 'startup' ? '🚀 Startup' : 
+                 history.notificationType === 'shutdown' ? '🛑 Shutdown' :
+                 `${history.actualPercentage.toFixed(1)}% / ${history.thresholdPercentage}%`}
               </div>
 
               {/* Time */}
@@ -129,7 +138,9 @@ function HistoryItem({ history }: { history: NotificationHistory }) {
                 {formatPhoneNumberForDisplay(history.phoneNumber)}
               </p>
               <p className="text-xs text-slate-400">
-                Usage reached {history.actualPercentage.toFixed(1)}% (threshold: {history.thresholdPercentage}%)
+                {history.notificationType === 'startup' ? 'Simulator started notification' :
+                 history.notificationType === 'shutdown' ? 'Simulator stopped notification' :
+                 `Usage reached ${history.actualPercentage.toFixed(1)}% (threshold: ${history.thresholdPercentage}%)`}
               </p>
             </div>
 

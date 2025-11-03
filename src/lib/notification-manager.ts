@@ -134,162 +134,33 @@ export class NotificationManager {
     return triggers.filter(t => t.isActive);
   }
 
-  // Threshold monitoring and notification sending
+  // SIMPLE threshold monitoring - no complex logic
   async checkThresholds(simulatorId: string, currentPercentage: number): Promise<void> {
-    try {
-      console.log(`[NotificationManager] Checking thresholds for ${simulatorId} at ${currentPercentage}%`);
+    console.log(`[NotificationManager] SIMPLE CHECK: ${simulatorId} at ${currentPercentage}%`);
+    
+    // Get active triggers
+    const activeTriggers = await this.getActiveTriggersBySimulator(simulatorId);
+    console.log(`[NotificationManager] Found ${activeTriggers.length} active triggers`);
+    
+    // Check each trigger - SIMPLE LOGIC ONLY
+    for (const trigger of activeTriggers) {
+      console.log(`[NotificationManager] Checking: ${currentPercentage} >= ${trigger.thresholdPercentage}?`);
       
-      // Validate input parameters
-      if (typeof currentPercentage !== 'number' || isNaN(currentPercentage)) {
-        console.error(`[NotificationManager] Invalid currentPercentage: ${currentPercentage} (type: ${typeof currentPercentage})`);
-        return;
-      }
-      
-      // Get notification settings
-      const settings = await this.storage.getSettings();
-      console.log(`[NotificationManager] Settings:`, settings);
-      
-      // Skip if notifications are globally disabled
-      if (!settings.enabledGlobally) {
-        console.log(`[NotificationManager] Notifications globally disabled`);
-        return;
-      }
-
-      // Get active triggers for this simulator
-      const activeTriggers = await this.getActiveTriggersBySimulator(simulatorId);
-      console.log(`[NotificationManager] Found ${activeTriggers.length} active triggers:`, activeTriggers);
-      
-      // Check each trigger
-      for (const trigger of activeTriggers) {
-        console.log(`[NotificationManager] Checking trigger ${trigger.id}: ${currentPercentage}% >= ${trigger.thresholdPercentage}%`);
-        console.log(`[NotificationManager] DEBUG - Types: currentPercentage=${typeof currentPercentage} (${currentPercentage}), thresholdPercentage=${typeof trigger.thresholdPercentage} (${trigger.thresholdPercentage})`);
+      if (currentPercentage >= trigger.thresholdPercentage) {
+        console.log(`[NotificationManager] 🚨 TRIGGER FIRED! Sending notification...`);
         
-        // Validate trigger threshold
-        if (typeof trigger.thresholdPercentage !== 'number' || isNaN(trigger.thresholdPercentage)) {
-          console.error(`[NotificationManager] Invalid threshold for trigger ${trigger.id}: ${trigger.thresholdPercentage} (type: ${typeof trigger.thresholdPercentage})`);
-          continue;
-        }
-        
-        // Ensure both values are numbers for proper comparison
-        const currentNum = Number(currentPercentage);
-        const thresholdNum = Number(trigger.thresholdPercentage);
-        
-        console.log(`[NotificationManager] DEBUG - Converted: currentNum=${currentNum}, thresholdNum=${thresholdNum}, comparison: ${currentNum} >= ${thresholdNum} = ${currentNum >= thresholdNum}`);
-        
-        // Check hysteresis to prevent repeated triggers
-        const lastTriggerPercentage = await this.storage.getLastTriggerPercentage(trigger.id);
-        const hysteresisMargin = 2; // 2% hysteresis margin
-        
-        if (lastTriggerPercentage !== null) {
-          // If we previously triggered and the percentage hasn't dropped significantly, skip
-          if (currentNum >= lastTriggerPercentage - hysteresisMargin) {
-            console.log(`[NotificationManager] 🔄 Hysteresis check: skipping trigger ${trigger.id} (current: ${currentNum}%, last trigger: ${lastTriggerPercentage}%, needs to drop below ${(lastTriggerPercentage - hysteresisMargin).toFixed(1)}%)`);
-            continue;
-          } else {
-            console.log(`[NotificationManager] ✅ Hysteresis check passed: percentage dropped sufficiently (current: ${currentNum}%, last trigger: ${lastTriggerPercentage}%)`);
-          }
-        }
-        
-        // FIXED: Use precise comparison to avoid floating point issues
-        if (currentNum >= thresholdNum) {
-          console.log(`[NotificationManager] ✅ Threshold exceeded! Processing trigger ${trigger.id} (${currentNum}% >= ${thresholdNum}%)`);
-          await this.processTrigger(trigger, currentNum, settings);
-          // Record the percentage at which we triggered for hysteresis
-          await this.storage.setLastTriggerPercentage(trigger.id, currentNum);
-        } else {
-          console.log(`[NotificationManager] ❌ Threshold NOT exceeded for trigger ${trigger.id} (${currentNum}% < ${thresholdNum}%)`);
-          // Reset hysteresis if we're well below the threshold
-          if (lastTriggerPercentage !== null && currentNum < thresholdNum - hysteresisMargin) {
-            console.log(`[NotificationManager] 🔄 Resetting hysteresis for trigger ${trigger.id} (current: ${currentNum}% < threshold - margin: ${(thresholdNum - hysteresisMargin).toFixed(1)}%)`);
-            await this.storage.setLastTriggerPercentage(trigger.id, 0);
-          }
+        // SIMPLE: Just send the notification, no complex checks
+        try {
+          const success = await this.sendNotification(trigger, currentPercentage);
+          console.log(`[NotificationManager] Notification result: ${success ? 'SUCCESS' : 'FAILED'}`);
+        } catch (error) {
+          console.error(`[NotificationManager] Notification error:`, error);
         }
       }
-    } catch (error) {
-      console.error('Error checking thresholds:', error);
-      // Don't throw here to prevent disrupting the main application flow
     }
   }
 
-  private async processTrigger(
-    trigger: NotificationTrigger, 
-    currentPercentage: number, 
-    settings: NotificationSettings
-  ): Promise<void> {
-    try {
-      console.log(`[NotificationManager] Processing trigger ${trigger.id} for ${trigger.phoneNumber}`);
-      
-      // Check cooldown with more detailed logging
-      const lastNotificationTime = await this.storage.getLastNotificationTime(trigger.id);
-      if (lastNotificationTime) {
-        const minutesSinceLastNotification = (Date.now() - lastNotificationTime.getTime()) / (1000 * 60);
-        console.log(`[NotificationManager] Cooldown check: ${minutesSinceLastNotification.toFixed(2)} minutes since last notification, cooldown period: ${settings.cooldownMinutes} minutes`);
-        if (minutesSinceLastNotification < settings.cooldownMinutes) {
-          console.log(`[NotificationManager] ⏰ Still in cooldown period (${(settings.cooldownMinutes - minutesSinceLastNotification).toFixed(2)} minutes remaining), skipping notification`);
-          return; // Still in cooldown period
-        } else {
-          console.log(`[NotificationManager] ✅ Cooldown period expired, proceeding with notification`);
-        }
-      } else {
-        console.log(`[NotificationManager] ✅ No previous notification found, proceeding with first notification`);
-      }
-
-      // Check daily limit
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayHistory = await this.getTodayNotificationHistory(trigger.id, today);
-      console.log(`[NotificationManager] Today's notifications: ${todayHistory.length}, limit: ${settings.maxDailyNotifications}`);
-      
-      if (todayHistory.length >= settings.maxDailyNotifications) {
-        console.log(`[NotificationManager] Daily limit reached, skipping`);
-        return; // Daily limit reached
-      }
-
-      // Send notification
-      console.log(`[NotificationManager] Sending notification to ${trigger.phoneNumber}`);
-      let success = false;
-      let errorMessage: string | undefined;
-      
-      try {
-        success = await this.sendNotification(trigger, currentPercentage);
-      } catch (error) {
-        success = false;
-        errorMessage = (error as any).detailedMessage || (error instanceof Error ? error.message : 'Unknown error');
-        console.log(`[NotificationManager] Notification failed: ${errorMessage}`);
-      }
-      
-      // Record the attempt with detailed information
-      const historyEntry = createNotificationHistory(
-        trigger,
-        currentPercentage,
-        success,
-        success ? undefined : errorMessage || 'Failed to send WhatsApp message'
-      );
-      
-      console.log(`[NotificationManager] Recording history: ${success ? 'SUCCESS' : 'FAILED'} - ${trigger.phoneNumber}`);
-      await this.storage.saveNotificationHistory(historyEntry);
-      
-      // Update cooldown timestamp if successful
-      if (success) {
-        await this.storage.setLastNotificationTime(trigger.id, new Date());
-      }
-      
-    } catch (error) {
-      console.error('Error processing trigger:', error);
-      
-      // Record failed attempt with detailed error
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const historyEntry = createNotificationHistory(
-        trigger,
-        currentPercentage,
-        false,
-        `Processing error: ${errorMessage}`
-      );
-      
-      console.log(`[NotificationManager] Recording FAILED attempt: ${errorMessage}`);
-      await this.storage.saveNotificationHistory(historyEntry);
-    }
-  }
+  // REMOVED - processTrigger is now handled directly in checkThresholds
 
   async sendNotification(trigger: NotificationTrigger, currentPercentage: number): Promise<boolean> {
     try {
@@ -466,22 +337,80 @@ export const notificationManager = new NotificationManager();
 
 console.log('🚀 [INIT] NotificationManager loaded and ready');
 
-// Debug function for manual testing (available in browser console)
+// Add startup test method
+(notificationManager as any).sendStartupTest = async function(phoneNumber: string, simulatorId: string): Promise<boolean> {
+  console.log('🚀 [STARTUP] Testing notification system...');
+  
+  try {
+    const message = `🚀 EMS Notification System Test
+
+Simulator: ${simulatorId}
+Time: ${new Date().toLocaleString()}
+
+If you receive this, notifications are working! 🎉`;
+
+    const success = await this.sendNotification({
+      id: 'startup-test',
+      phoneNumber: phoneNumber,
+      thresholdPercentage: 0,
+      simulatorId: simulatorId,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }, 0);
+    
+    console.log('🚀 [STARTUP] Test result:', success);
+    return success;
+  } catch (error) {
+    console.error('🚀 [STARTUP] Test failed:', error);
+    return false;
+  }
+};
+
+// Simple test functions (available in browser console)
 if (typeof window !== 'undefined') {
-  console.log('🚀 [INIT] Adding testNotifications to window');
-  (window as any).testNotifications = async (simulatorId: string, percentage: number) => {
-    console.log(`🧪 [TEST] Manual notification test: ${simulatorId} at ${percentage}%`);
+  console.log('🚀 [INIT] Adding test functions to window');
+  
+  // Test startup notification
+  (window as any).testStartup = async (phoneNumber: string, simulatorId: string) => {
+    console.log(`🚀 [TEST] Testing startup notification...`);
     try {
-      await notificationManager.checkThresholds(simulatorId, percentage);
-      console.log(`🧪 [TEST] Manual test completed`);
+      const result = await (notificationManager as any).sendStartupTest(phoneNumber, simulatorId);
+      console.log(`🚀 [TEST] Startup test result: ${result}`);
+      return result;
     } catch (error) {
-      console.error(`🧪 [TEST] Manual test failed:`, error);
+      console.error(`🚀 [TEST] Startup test failed:`, error);
+      return false;
     }
   };
   
-  // Also add a simple test function
-  (window as any).simpleTest = () => {
-    console.log('🧪 [SIMPLE] Simple test function works!');
-    console.log('🧪 [SIMPLE] NotificationManager available:', !!notificationManager);
+  // Test threshold trigger
+  (window as any).testTrigger = async (simulatorId: string, percentage: number) => {
+    console.log(`🧪 [TEST] Testing trigger: ${simulatorId} at ${percentage}%`);
+    try {
+      await notificationManager.checkThresholds(simulatorId, percentage);
+      console.log(`🧪 [TEST] Trigger test completed`);
+    } catch (error) {
+      console.error(`🧪 [TEST] Trigger test failed:`, error);
+    }
   };
+
+  // Test startup notifications system
+  (window as any).testStartupNotifications = async (simulatorId: string, simulatorName?: string) => {
+    console.log(`🚀 [TEST] Testing startup notifications system for ${simulatorId}...`);
+    try {
+      const { sendStartupNotifications } = await import('./startup-notifications');
+      await sendStartupNotifications(simulatorId, 'auto', simulatorName);
+      console.log(`🚀 [TEST] Startup notifications system test completed`);
+      return true;
+    } catch (error) {
+      console.error(`🚀 [TEST] Startup notifications system test failed:`, error);
+      return false;
+    }
+  };
+  
+  console.log('🚀 Available functions:');
+  console.log('  testStartup(phoneNumber, simulatorId) - Test if WhatsApp works');
+  console.log('  testTrigger(simulatorId, percentage) - Test threshold trigger');
+  console.log('  testStartupNotifications(simulatorId, simulatorName?) - Test startup notification system');
 }

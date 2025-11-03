@@ -93,7 +93,7 @@ export function CombinedDashboard({
   }, [refreshBlock]);
 
   // Emitters
-  const autoEmitter = useAutoEmitter(simulatorId, baseKw, volatility, fastForwardEnabled, handleTickSent);
+  const autoEmitter = useAutoEmitter(simulatorId, baseKw, volatility, fastForwardEnabled, handleTickSent, simulatorName);
   const manualEmitter = useManualEmitter(simulatorId, () => manualPowerKw, fastForwardEnabled, handleTickSent);
 
   // Periodic polling while simulator is running (for reliable updates)

@@ -20,7 +20,7 @@ export function SimulatorRunContent({ simulatorId, simulatorName, targetKwh }: S
 
   const manualPowerKw = useMemo(() => sliderValue * maxKw, [sliderValue, maxKw]);
 
-  const autoEmitter = useAutoEmitter(simulatorId, baseKw, volatility);
+  const autoEmitter = useAutoEmitter(simulatorId, baseKw, volatility, false, undefined, simulatorName);
   const manualEmitter = useManualEmitter(simulatorId, () => manualPowerKw);
 
   const toggleAuto = () => {

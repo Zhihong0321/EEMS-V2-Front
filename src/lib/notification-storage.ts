@@ -287,7 +287,8 @@ export function createNotificationHistory(
   trigger: NotificationTrigger,
   actualPercentage: number,
   success: boolean,
-  errorMessage?: string
+  errorMessage?: string,
+  notificationType: 'threshold' | 'startup' | 'shutdown' = 'threshold'
 ): NotificationHistory {
   return {
     id: `history-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -298,7 +299,8 @@ export function createNotificationHistory(
     actualPercentage,
     sentAt: new Date().toISOString(),
     success,
-    errorMessage
+    errorMessage,
+    notificationType
   };
 }
 

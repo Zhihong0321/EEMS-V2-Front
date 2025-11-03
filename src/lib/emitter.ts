@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ingestReadings, deleteFutureReadings, getLastReadingTimestamp } from "./api";
 import type { TickIn } from "./types";
 import { useToast } from "@/components/ui/toast-provider";
+import { sendStartupNotifications } from "./startup-notifications";
 
 // Shared constants for both auto and manual emitters
 const EMITTER_INTERVAL_MS = 2_000; // 2 seconds per signal
@@ -19,6 +20,7 @@ export type EmitterState = {
 
 type UseEmitterOptions = {
   simulatorId: string | null;
+  simulatorName?: string;
   intervalMs: number;
   mode: "auto" | "manual";
   getTick: () => TickIn;
@@ -26,7 +28,7 @@ type UseEmitterOptions = {
   onTickSent?: (tick: TickIn) => void;
 };
 
-function useEmitter({ simulatorId, intervalMs, mode, getTick, fastForwardEnabled = false, onTickSent }: UseEmitterOptions) {
+function useEmitter({ simulatorId, simulatorName, intervalMs, mode, getTick, fastForwardEnabled = false, onTickSent }: UseEmitterOptions) {
   const { push } = useToast();
   const [isRunning, setIsRunning] = useState(false);
   const [sentCount, setSentCount] = useState(0);
@@ -142,6 +144,18 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick, fastForwardEnabled
       return;
     }
 
+    // Send startup notifications for Auto Run mode
+    if (mode === "auto") {
+      console.log(`🚀 [EMITTER] Auto Run starting - sending startup notifications for ${simulatorId}`);
+      try {
+        await sendStartupNotifications(simulatorId, mode, simulatorName);
+        console.log(`🚀 [EMITTER] Startup notifications sent successfully`);
+      } catch (error) {
+        console.error(`🚀 [EMITTER] Failed to send startup notifications:`, error);
+        // Don't block simulator start if notifications fail
+      }
+    }
+
     // Delete future readings from backend when simulator starts
     // This ensures clean start without old fast-forward data interfering
     void deleteFutureReadings(simulatorId).catch((error) => {
@@ -176,7 +190,7 @@ function useEmitter({ simulatorId, intervalMs, mode, getTick, fastForwardEnabled
     timerRef.current = setInterval(() => {
       void sendTick();
     }, intervalMs);
-  }, [fastForwardEnabled, intervalMs, push, sendTick, simulatorId]);
+  }, [fastForwardEnabled, intervalMs, mode, push, sendTick, simulatorId, simulatorName]);
 
   useEffect(() => {
     startRef.current = start;
@@ -204,7 +218,8 @@ export function useAutoEmitter(
   baseKw: number,
   volatilityPct: number,
   fastForwardEnabled = false,
-  onTickSent?: (tick: TickIn) => void
+  onTickSent?: (tick: TickIn) => void,
+  simulatorName?: string
 ) {
   const getTick = useCallback((): TickIn => {
     const volatilityFactor = Math.max(0, Math.min(volatilityPct, 100)) / 100;
@@ -219,6 +234,7 @@ export function useAutoEmitter(
 
   return useEmitter({
     simulatorId,
+    simulatorName,
     intervalMs: EMITTER_INTERVAL_MS,
     mode: "auto",
     getTick,

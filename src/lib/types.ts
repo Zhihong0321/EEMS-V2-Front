@@ -99,6 +99,7 @@ export type NotificationHistory = {
   sentAt: string;
   success: boolean;
   errorMessage?: string;
+  notificationType?: 'threshold' | 'startup' | 'shutdown';
 };
 
 export type NotificationSettings = {
