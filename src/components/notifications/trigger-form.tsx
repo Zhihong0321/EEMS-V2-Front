@@ -110,6 +110,9 @@ export function TriggerForm({
       const error = validateField(field, value);
       if (error) {
         setErrors(prev => ({ ...prev, [field]: error }));
+        console.log(`Validation error for ${field}:`, error);
+      } else {
+        console.log(`Validation passed for ${field}:`, value);
       }
     }
   };
@@ -214,6 +217,14 @@ export function TriggerForm({
             </div>
           )}
 
+          {/* Debug: Show current errors */}
+          {process.env.NODE_ENV === 'development' && Object.keys(errors).length > 0 && (
+            <div className="p-3 rounded-md bg-yellow-900/20 border border-yellow-600/20">
+              <p className="text-xs text-yellow-300 mb-2">Debug - Current Errors:</p>
+              <pre className="text-xs text-yellow-200">{JSON.stringify(errors, null, 2)}</pre>
+            </div>
+          )}
+
           {/* Phone Number Input */}
           <InputWrapper
             label="WhatsApp Phone Number"
@@ -284,7 +295,7 @@ export function TriggerForm({
             <Button
               type="submit"
               isLoading={isSubmitting}
-              disabled={isLoading || Object.keys(errors).length > 0}
+              disabled={isLoading || !formData.phoneNumber.trim() || !formData.thresholdPercentage.trim()}
               className="flex-1"
             >
               {isSubmitting 
