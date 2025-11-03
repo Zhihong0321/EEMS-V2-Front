@@ -70,6 +70,19 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
     async (input: CreateSimulatorInput) => {
       try {
         const simulator = await createSimulator(input);
+        
+        // Send startup notification
+        try {
+          const { sendWhatsAppMessage } = await import('./whatsapp-api');
+          await sendWhatsAppMessage({
+            to: '60123456789', // Replace with your number
+            message: `🚀 Simulator Started!\n\nName: ${simulator.name}\nTarget: ${simulator.target_kwh} kWh\nTime: ${new Date().toLocaleString()}\n\nYour energy simulator is now running!`
+          });
+          console.log('✅ Startup notification sent');
+        } catch (error) {
+          console.error('❌ Failed to send startup notification:', error);
+        }
+        
         // After a successful create, refresh from the server to ensure we show
         // the persisted record and any server-side defaults/derived fields.
         await refresh();

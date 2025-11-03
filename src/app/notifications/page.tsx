@@ -126,15 +126,39 @@ export default function NotificationsPage() {
               </div>
             </div>
             
-            {/* Debug Button */}
+            {/* Test Buttons */}
             {selectedSimulatorId && (
-              <button
-                onClick={handleDebugNotifications}
-                className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md transition-colors text-sm font-medium"
-                title="Debug notification system"
-              >
-                🔍 Debug System
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    try {
+                      const { sendWhatsAppMessage } = await import('@/lib/whatsapp-api');
+                      const result = await sendWhatsAppMessage({
+                        to: '60123456789', // Replace with your number
+                        message: `🧪 TEST NOTIFICATION\n\nTime: ${new Date().toLocaleString()}\nSimulator: ${selectedSimulator?.name}\n\nThis is a test message from your EMS system!`
+                      });
+                      if (result.success) {
+                        alert('✅ Test notification sent successfully!');
+                      } else {
+                        alert('❌ Failed to send test notification: ' + result.error);
+                      }
+                    } catch (error) {
+                      alert('❌ Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
+                    }
+                  }}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors text-sm font-medium"
+                  title="Send test WhatsApp message"
+                >
+                  📱 Send Test
+                </button>
+                <button
+                  onClick={handleDebugNotifications}
+                  className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md transition-colors text-sm font-medium"
+                  title="Debug notification system"
+                >
+                  🔍 Debug System
+                </button>
+              </div>
             )}
           </div>
 
