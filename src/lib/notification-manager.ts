@@ -415,3 +415,16 @@ Please check your energy consumption and take appropriate action.`;
 
 // Default notification manager instance
 export const notificationManager = new NotificationManager();
+
+// Debug function for manual testing (available in browser console)
+if (typeof window !== 'undefined') {
+  (window as any).testNotifications = async (simulatorId: string, percentage: number) => {
+    console.log(`🧪 [TEST] Manual notification test: ${simulatorId} at ${percentage}%`);
+    try {
+      await notificationManager.checkThresholds(simulatorId, percentage);
+      console.log(`🧪 [TEST] Manual test completed`);
+    } catch (error) {
+      console.error(`🧪 [TEST] Manual test failed:`, error);
+    }
+  };
+}

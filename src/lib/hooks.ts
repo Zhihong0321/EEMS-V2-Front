@@ -329,11 +329,20 @@ export function useLatestBlock(
 
             // Check notification thresholds when percentage updates
             if (event.percent_of_target !== undefined) {
-              console.log(`Checking thresholds for ${simulatorId}: ${event.percent_of_target}%`);
-              notificationManager.checkThresholds(simulatorId, event.percent_of_target)
-                .catch(error => {
-                  console.error('Error checking notification thresholds:', error);
-                });
+              console.log(`🔔 [SSE] Checking thresholds for ${simulatorId}: ${event.percent_of_target}%`);
+              console.log(`🔔 [SSE] NotificationManager available:`, !!notificationManager);
+              
+              try {
+                notificationManager.checkThresholds(simulatorId, event.percent_of_target)
+                  .then(() => {
+                    console.log(`🔔 [SSE] Threshold check completed for ${simulatorId}`);
+                  })
+                  .catch(error => {
+                    console.error('🔔 [SSE] Error checking notification thresholds:', error);
+                  });
+              } catch (syncError) {
+                console.error('🔔 [SSE] Synchronous error calling checkThresholds:', syncError);
+              }
             }
 
             return {
