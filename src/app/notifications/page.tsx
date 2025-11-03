@@ -113,15 +113,40 @@ export default function NotificationsPage() {
   return (
     <div className="min-h-screen bg-slate-950 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
+        {/* CACHE BUST - BIG TEST SECTION */}
+        <div className="bg-red-900/20 border border-red-500 rounded-lg p-4 mb-6">
+          <h2 className="text-xl font-bold text-red-400 mb-2">🚨 CACHE BUST TEST SECTION</h2>
+          <p className="text-red-300 mb-4">If you can see this red section, the cache has been cleared!</p>
+          <button
+            onClick={async () => {
+              alert('🎉 CACHE CLEARED! Test button works!');
+              try {
+                const { sendWhatsAppMessage } = await import('@/lib/whatsapp-api');
+                const result = await sendWhatsAppMessage({
+                  to: '60123456789',
+                  message: `🚨 EMERGENCY TEST\n\nTime: ${new Date().toLocaleString()}\n\nThis proves the cache is cleared and buttons work!`
+                });
+                console.log('Emergency test result:', result);
+                alert(result.success ? '✅ WhatsApp test SUCCESS!' : '❌ WhatsApp test FAILED: ' + result.error);
+              } catch (error) {
+                alert('❌ Error: ' + (error instanceof Error ? error.message : 'Unknown'));
+              }
+            }}
+            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-lg"
+          >
+            🚨 EMERGENCY TEST BUTTON
+          </button>
+        </div>
+
         {/* Page Header */}
         <header className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <BellIcon className="h-8 w-8 text-primary" />
               <div>
-                <h1 className="text-3xl font-bold text-white">WhatsApp Notifications</h1>
+                <h1 className="text-3xl font-bold text-white">WhatsApp Notifications [UPDATED v3]</h1>
                 <p className="text-slate-400">
-                  Manage notification triggers for your energy management simulators
+                  Manage notification triggers - TEST BUTTONS SHOULD BE VISIBLE NOW!
                 </p>
               </div>
             </div>
