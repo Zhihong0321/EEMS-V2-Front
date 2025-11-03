@@ -137,20 +137,27 @@ export class NotificationManager {
   // Threshold monitoring and notification sending
   async checkThresholds(simulatorId: string, currentPercentage: number): Promise<void> {
     try {
+      console.log(`[NotificationManager] Checking thresholds for ${simulatorId} at ${currentPercentage}%`);
+      
       // Get notification settings
       const settings = await this.storage.getSettings();
+      console.log(`[NotificationManager] Settings:`, settings);
       
       // Skip if notifications are globally disabled
       if (!settings.enabledGlobally) {
+        console.log(`[NotificationManager] Notifications globally disabled`);
         return;
       }
 
       // Get active triggers for this simulator
       const activeTriggers = await this.getActiveTriggersBySimulator(simulatorId);
+      console.log(`[NotificationManager] Found ${activeTriggers.length} active triggers:`, activeTriggers);
       
       // Check each trigger
       for (const trigger of activeTriggers) {
+        console.log(`[NotificationManager] Checking trigger ${trigger.id}: ${currentPercentage}% >= ${trigger.thresholdPercentage}%`);
         if (currentPercentage >= trigger.thresholdPercentage) {
+          console.log(`[NotificationManager] Threshold exceeded! Processing trigger ${trigger.id}`);
           await this.processTrigger(trigger, currentPercentage, settings);
         }
       }
@@ -166,11 +173,15 @@ export class NotificationManager {
     settings: NotificationSettings
   ): Promise<void> {
     try {
+      console.log(`[NotificationManager] Processing trigger ${trigger.id} for ${trigger.phoneNumber}`);
+      
       // Check cooldown
       const lastNotificationTime = await this.storage.getLastNotificationTime(trigger.id);
       if (lastNotificationTime) {
         const minutesSinceLastNotification = (Date.now() - lastNotificationTime.getTime()) / (1000 * 60);
+        console.log(`[NotificationManager] Minutes since last notification: ${minutesSinceLastNotification}, cooldown: ${settings.cooldownMinutes}`);
         if (minutesSinceLastNotification < settings.cooldownMinutes) {
+          console.log(`[NotificationManager] Still in cooldown period, skipping`);
           return; // Still in cooldown period
         }
       }
@@ -179,12 +190,15 @@ export class NotificationManager {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayHistory = await this.getTodayNotificationHistory(trigger.id, today);
+      console.log(`[NotificationManager] Today's notifications: ${todayHistory.length}, limit: ${settings.maxDailyNotifications}`);
       
       if (todayHistory.length >= settings.maxDailyNotifications) {
+        console.log(`[NotificationManager] Daily limit reached, skipping`);
         return; // Daily limit reached
       }
 
       // Send notification
+      console.log(`[NotificationManager] Sending notification to ${trigger.phoneNumber}`);
       const success = await this.sendNotification(trigger, currentPercentage);
       
       // Record the attempt

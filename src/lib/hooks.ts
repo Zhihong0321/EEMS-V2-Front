@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createSimulator, deleteSimulator, fetchBlockHistory, fetchLatestBlock, getSimulators, simulatorEndpoint } from "./api";
 import type { CreateSimulatorInput, HistoryBlock, LatestBlock, Simulator, SseEvent } from "./types";
 import { useToast } from "@/components/ui/toast-provider";
+import { notificationManager } from "./notification-manager";
 
 export function useSimulators(initialSimulators: Simulator[] = []) {
   const { push } = useToast();
@@ -324,6 +325,15 @@ export function useLatestBlock(
             if (previousBlock && event.block_start_local && event.block_start_local !== previousBlock.block_start_local) {
               alertRef.current = false;
               onWindowChange?.(event.block_start_local);
+            }
+
+            // Check notification thresholds when percentage updates
+            if (event.percent_of_target !== undefined) {
+              console.log(`Checking thresholds for ${simulatorId}: ${event.percent_of_target}%`);
+              notificationManager.checkThresholds(simulatorId, event.percent_of_target)
+                .catch(error => {
+                  console.error('Error checking notification thresholds:', error);
+                });
             }
 
             return {

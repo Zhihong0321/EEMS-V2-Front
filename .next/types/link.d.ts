@@ -31,11 +31,11 @@ declare namespace __next_route_internal_types__ {
   type StaticRoutes = 
     | `/api/whatsapp/qr`
     | `/api/whatsapp/send`
-    | `/api/whatsapp/status`
     | `/`
-    | `/notifications`
+    | `/api/whatsapp/status`
     | `/dashboard`
     | `/test-features`
+    | `/notifications`
     | `/health`
   type DynamicRoutes<T extends string = string> = 
     | `/${SafeSlug<T>}/run`
