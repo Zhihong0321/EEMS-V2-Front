@@ -214,7 +214,7 @@ export function TriggerList({
           <ExclamationTriangleIcon className="h-12 w-12 text-slate-500 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">No Notification Triggers</h3>
           <p className="text-slate-400 mb-4">
-            You haven't set up any WhatsApp notification triggers yet.
+            You haven&apos;t set up any WhatsApp notification triggers yet.
           </p>
           <p className="text-sm text-slate-500">
             Create your first trigger to receive alerts when energy usage exceeds your specified thresholds.

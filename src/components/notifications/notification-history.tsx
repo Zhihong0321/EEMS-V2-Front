@@ -161,7 +161,7 @@ export function NotificationHistory({ simulatorId, limit = 50 }: NotificationHis
   // Load notification history
   useEffect(() => {
     loadHistory();
-  }, [simulatorId, limit]);
+  }, [simulatorId, limit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadHistory = async () => {
     try {

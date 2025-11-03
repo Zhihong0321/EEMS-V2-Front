@@ -47,7 +47,7 @@ export function NotificationManager({ simulatorId, simulatorName }: Notification
   // Load data on mount
   useEffect(() => {
     loadData();
-  }, [simulatorId]);
+  }, [simulatorId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadData = async () => {
     try {
