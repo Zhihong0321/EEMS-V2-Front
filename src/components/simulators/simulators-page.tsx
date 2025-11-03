@@ -103,16 +103,7 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
   };
 
   return (
-    <>
-      {/* MASSIVE TEST BANNER - PROOF OF FRONTEND UPDATES */}
-      <div className="bg-red-600 text-white text-center py-8 px-6 font-bold text-2xl animate-pulse border-8 border-yellow-400 mb-6">
-        🚨🚨🚨 FRONTEND UPDATES WORKING! CLIENT COMPONENT FIXED! 🚨🚨🚨
-        <br />
-        <span className="text-lg bg-yellow-500 text-black px-4 py-2 rounded mt-2 inline-block animate-bounce">
-          ⚡ CLIENT-SIDE RENDERING ISSUE RESOLVED! ⚡
-        </span>
-      </div>
-      <section className="space-y-10 animate-fadeIn">
+    <section className="space-y-10 animate-fadeIn">
         <header className="space-y-3">
         <h1>Simulators</h1>
         <p className="max-w-2xl text-sm sm:text-base text-slate-400">
