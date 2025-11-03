@@ -144,7 +144,7 @@ export default function NotificationsPage() {
             <div className="flex items-center gap-3">
               <BellIcon className="h-8 w-8 text-primary" />
               <div>
-                <h1 className="text-3xl font-bold text-white">WhatsApp Notifications [UPDATED v3]</h1>
+                <h1 className="text-3xl font-bold text-white">WhatsApp Notifications [BUILD: {new Date().toISOString()}]</h1>
                 <p className="text-slate-400">
                   Manage notification triggers - TEST BUTTONS SHOULD BE VISIBLE NOW!
                 </p>
