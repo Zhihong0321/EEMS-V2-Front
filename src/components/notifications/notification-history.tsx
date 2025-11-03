@@ -28,6 +28,35 @@ interface HistoryFilters {
 
 function HistoryItem({ history }: { history: NotificationHistory }) {
   const [showDetails, setShowDetails] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  const handleRetryNotification = async (historyItem: NotificationHistory) => {
+    setIsRetrying(true);
+    try {
+      // Create a test notification with the same parameters
+      const result = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: historyItem.phoneNumber,
+          message: `🔄 Retry Test - EMS Alert: Usage was ${historyItem.actualPercentage.toFixed(1)}% (threshold: ${historyItem.thresholdPercentage}%)\n\nThis is a manual retry of a previously failed notification.\nTime: ${new Date().toLocaleString()}`
+        })
+      });
+      
+      const data = await result.json();
+      
+      if (data.success) {
+        alert(`✅ Retry successful! Message sent to ${historyItem.phoneNumber}`);
+      } else {
+        alert(`❌ Retry failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Retry error:', error);
+      alert(`❌ Retry failed: ${error instanceof Error ? error.message : 'Network error'}`);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -106,10 +135,25 @@ function HistoryItem({ history }: { history: NotificationHistory }) {
 
             {/* Error Message */}
             {!history.success && history.errorMessage && (
-              <div className="mt-2 p-2 rounded bg-red-900/20 border border-red-900/30">
-                <p className="text-xs text-red-300">
-                  Error: {history.errorMessage}
-                </p>
+              <div className="mt-2 p-3 rounded bg-red-900/20 border border-red-900/30">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-red-300 mb-1">
+                      ❌ Notification Failed
+                    </p>
+                    <p className="text-xs text-red-200">
+                      {history.errorMessage}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleRetryNotification(history)}
+                    disabled={isRetrying}
+                    className="px-2 py-1 text-xs bg-red-800/50 hover:bg-red-700/50 text-red-200 rounded border border-red-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Retry this notification"
+                  >
+                    {isRetrying ? '...' : 'Retry'}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -209,6 +253,16 @@ export function NotificationHistory({ simulatorId, limit = 50 }: NotificationHis
 
   const successCount = history.filter(h => h.success).length;
   const failedCount = history.filter(h => !h.success).length;
+  const failureRate = history.length > 0 ? ((failedCount / history.length) * 100).toFixed(1) : '0';
+  
+  // Get common error types
+  const errorTypes = history
+    .filter(h => !h.success && h.errorMessage)
+    .reduce((acc, h) => {
+      const errorType = h.errorMessage!.split(':')[0] || 'Unknown';
+      acc[errorType] = (acc[errorType] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
   const exportHistory = () => {
     const csvContent = [
@@ -289,7 +343,24 @@ export function NotificationHistory({ simulatorId, limit = 50 }: NotificationHis
                 <span>{history.length} total</span>
                 <span className="text-success">{successCount} sent</span>
                 <span className="text-danger">{failedCount} failed</span>
+                {failedCount > 0 && (
+                  <span className="text-orange-400">({failureRate}% failure rate)</span>
+                )}
               </div>
+              
+              {/* Error Summary */}
+              {failedCount > 0 && Object.keys(errorTypes).length > 0 && (
+                <div className="mt-2 p-2 rounded bg-orange-900/20 border border-orange-600/20">
+                  <p className="text-xs font-medium text-orange-300 mb-1">Common Issues:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(errorTypes).map(([errorType, count]) => (
+                      <span key={errorType} className="px-2 py-1 text-xs bg-orange-800/30 text-orange-200 rounded">
+                        {errorType}: {count}x
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Controls */}

@@ -199,16 +199,26 @@ export class NotificationManager {
 
       // Send notification
       console.log(`[NotificationManager] Sending notification to ${trigger.phoneNumber}`);
-      const success = await this.sendNotification(trigger, currentPercentage);
+      let success = false;
+      let errorMessage: string | undefined;
       
-      // Record the attempt
+      try {
+        success = await this.sendNotification(trigger, currentPercentage);
+      } catch (error) {
+        success = false;
+        errorMessage = (error as any).detailedMessage || (error instanceof Error ? error.message : 'Unknown error');
+        console.log(`[NotificationManager] Notification failed: ${errorMessage}`);
+      }
+      
+      // Record the attempt with detailed information
       const historyEntry = createNotificationHistory(
         trigger,
         currentPercentage,
         success,
-        success ? undefined : 'Failed to send WhatsApp message'
+        success ? undefined : errorMessage || 'Failed to send WhatsApp message'
       );
       
+      console.log(`[NotificationManager] Recording history: ${success ? 'SUCCESS' : 'FAILED'} - ${trigger.phoneNumber}`);
       await this.storage.saveNotificationHistory(historyEntry);
       
       // Update cooldown timestamp if successful
@@ -219,14 +229,16 @@ export class NotificationManager {
     } catch (error) {
       console.error('Error processing trigger:', error);
       
-      // Record failed attempt
+      // Record failed attempt with detailed error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const historyEntry = createNotificationHistory(
         trigger,
         currentPercentage,
         false,
-        error instanceof Error ? error.message : 'Unknown error'
+        `Processing error: ${errorMessage}`
       );
       
+      console.log(`[NotificationManager] Recording FAILED attempt: ${errorMessage}`);
       await this.storage.saveNotificationHistory(historyEntry);
     }
   }
@@ -265,8 +277,11 @@ export class NotificationManager {
       return true;
     } catch (error) {
       const handled = notificationErrorHandler.handleError(error as Error, 'sendNotification');
-      console.error('Failed to send notification:', handled.message);
-      return false;
+      console.error(`[NotificationManager] Failed to send notification to ${trigger.phoneNumber}:`, handled.message);
+      
+      // Store the specific error for history logging
+      (error as any).detailedMessage = handled.message;
+      throw error; // Re-throw so processTrigger can log the detailed error
     }
   }
 
