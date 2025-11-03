@@ -43,6 +43,13 @@ export function CombinedDashboard({
   initialBlock,
   initialHistory
 }: CombinedDashboardProps) {
+  
+  // DEPLOYMENT TEST - REMOVE THIS AFTER CONFIRMING UPDATE
+  const deploymentTest = {
+    timestamp: new Date().toISOString(),
+    random: Math.random(),
+    message: "🚨 DEPLOYMENT UPDATED! 🚨"
+  };
   const [activeTab, setActiveTab] = useState<"dashboard" | "notifications">("dashboard");
   const [chartMode, setChartMode] = useState<"accumulate" | "non-accumulate">("accumulate");
   const [fastForwardEnabled, setFastForwardEnabled] = useState(true); // Fast-forward enabled by default
@@ -128,6 +135,28 @@ export function CombinedDashboard({
 
   return (
     <section className="space-y-6 animate-fadeIn">
+      
+      {/* 🚨 DEPLOYMENT TEST BANNER - REMOVE AFTER CONFIRMING UPDATE */}
+      <div className="bg-gradient-to-r from-red-600 to-orange-600 border-4 border-yellow-400 rounded-lg p-6 mb-6 shadow-2xl">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-white mb-2 animate-pulse">
+            🚨 DEPLOYMENT UPDATED! 🚨
+          </h1>
+          <p className="text-xl text-yellow-200 mb-2">
+            Build Time: {deploymentTest.timestamp}
+          </p>
+          <p className="text-lg text-yellow-200 mb-4">
+            Random ID: {deploymentTest.random.toFixed(6)}
+          </p>
+          <button
+            onClick={() => alert(`✅ DEPLOYMENT WORKS!\n\nTimestamp: ${deploymentTest.timestamp}\nRandom: ${deploymentTest.random}`)}
+            className="px-6 py-3 bg-yellow-500 text-black font-bold text-xl rounded-lg hover:bg-yellow-400 transition-colors"
+          >
+            🎉 CLICK TO CONFIRM UPDATE
+          </button>
+        </div>
+      </div>
+      
       {/* Header - Responsive: stacks on mobile, side-by-side on desktop */}
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div className="space-y-2">
