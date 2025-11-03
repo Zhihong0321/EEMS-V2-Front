@@ -82,7 +82,7 @@ export default function TestStartupPage() {
             <div className="text-xs text-slate-500 space-y-1">
               <p>💡 <strong>Note:</strong> Make sure you have:</p>
               <ul className="ml-4 space-y-1">
-                <li>• Created notification triggers for simulator "test-simulator-123"</li>
+                <li>• Created notification triggers for simulator &quot;test-simulator-123&quot;</li>
                 <li>• WhatsApp API configured and working</li>
                 <li>• Valid phone numbers in your triggers</li>
               </ul>
@@ -98,7 +98,7 @@ export default function TestStartupPage() {
             <div className="space-y-2">
               <p><strong>1. Auto Run Simulator Starts:</strong></p>
               <p className="ml-4 text-slate-400">
-                When you click "Start auto run" in the Auto Run Panel, the emitter calls <code>sendStartupNotifications()</code>
+                When you click &quot;Start auto run&quot; in the Auto Run Panel, the emitter calls <code>sendStartupNotifications()</code>
               </p>
             </div>
             
@@ -119,7 +119,7 @@ export default function TestStartupPage() {
             <div className="space-y-2">
               <p><strong>4. Log History:</strong></p>
               <p className="ml-4 text-slate-400">
-                Records each notification attempt in the notification history with type "startup"
+                Records each notification attempt in the notification history with type &quot;startup&quot;
               </p>
             </div>
           </CardContent>
