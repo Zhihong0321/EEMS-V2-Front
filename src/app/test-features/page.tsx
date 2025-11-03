@@ -132,6 +132,30 @@ export default function TestFeaturesPage() {
         </p>
       </header>
 
+      {/* Navigation to Notifications */}
+      <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+        <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+          🔔 WhatsApp Notification System
+        </h3>
+        <p className="text-sm text-slate-400 mb-4">
+          Set up automated WhatsApp notifications when energy usage exceeds thresholds
+        </p>
+        <div className="flex gap-3">
+          <a 
+            href="/notifications" 
+            className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors text-sm font-medium"
+          >
+            Manage Notifications
+          </a>
+          <a 
+            href="/dashboard" 
+            className="inline-flex items-center px-4 py-2 border border-slate-700 text-slate-300 rounded-md hover:bg-slate-800 transition-colors text-sm font-medium"
+          >
+            View Dashboard
+          </a>
+        </div>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Send Message Card */}
         <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">

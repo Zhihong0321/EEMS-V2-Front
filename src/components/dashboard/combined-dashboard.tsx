@@ -4,7 +4,7 @@
 // Mobile: Stacks vertically | Desktop: Side-by-side layouts
 // See docs/RESPONSIVE.md for guidelines
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CurrentBlockChart } from "./current-block-chart";
 import { BlockHistoryTiles } from "./block-history-tiles";
 import { LiveStatus } from "./live-status";
@@ -15,6 +15,12 @@ import { useAutoEmitter, useManualEmitter } from "@/lib/emitter";
 import type { HistoryBlock, LatestBlock, TickIn } from "@/lib/types";
 import { Select } from "@/components/ui/input";
 import { Input } from "@/components/ui/input";
+import { NotificationManager } from "@/components/notifications";
+import { 
+  ChartBarIcon, 
+  BellIcon 
+} from "@heroicons/react/24/outline";
+import clsx from "clsx";
 
 const percentFormatter = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 1
@@ -37,6 +43,7 @@ export function CombinedDashboard({
   initialBlock,
   initialHistory
 }: CombinedDashboardProps) {
+  const [activeTab, setActiveTab] = useState<"dashboard" | "notifications">("dashboard");
   const [chartMode, setChartMode] = useState<"accumulate" | "non-accumulate">("accumulate");
   const [fastForwardEnabled, setFastForwardEnabled] = useState(true); // Fast-forward enabled by default
   const [lastReadingTs, setLastReadingTs] = useState<string | null>(null);
@@ -120,14 +127,17 @@ export function CombinedDashboard({
   const percentVariant = percentOfTarget > 100 ? "text-danger" : percentOfTarget >= 80 ? "text-warning" : "text-success";
 
   return (
-    <section className="space-y-10 animate-fadeIn">
+    <section className="space-y-6 animate-fadeIn">
       {/* Header - Responsive: stacks on mobile, side-by-side on desktop */}
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Simulator Dashboard</p>
           <h1>{simulatorName}</h1>
           <p className="text-sm sm:text-base text-slate-400">
-            Live chart and block history update in real time via server-sent events from the backend.
+            {activeTab === "dashboard" 
+              ? "Live chart and block history update in real time via server-sent events from the backend."
+              : "Manage WhatsApp notifications for energy usage thresholds."
+            }
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-300">
@@ -144,7 +154,40 @@ export function CombinedDashboard({
         </div>
       </header>
 
-      {/* Chart Mode Toggle and Peak Target - Responsive: wraps on mobile */}
+      {/* Tab Navigation */}
+      <div className="border-b border-slate-700">
+        <nav className="flex space-x-8">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={clsx(
+              "flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors",
+              activeTab === "dashboard"
+                ? "border-primary text-primary"
+                : "border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-300"
+            )}
+          >
+            <ChartBarIcon className="h-5 w-5" />
+            Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab("notifications")}
+            className={clsx(
+              "flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors",
+              activeTab === "notifications"
+                ? "border-primary text-primary"
+                : "border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-300"
+            )}
+          >
+            <BellIcon className="h-5 w-5" />
+            Notifications
+          </button>
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === "dashboard" && (
+        <div className="space-y-6">
+          {/* Chart Mode Toggle and Peak Target - Responsive: wraps on mobile */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
           <label htmlFor="chart-mode-select" className="text-sm font-medium text-slate-300">Chart Mode:</label>
           <Select
@@ -257,9 +300,20 @@ export function CombinedDashboard({
         </div>
       </div>
 
-      <p className="text-xs text-slate-500">
-        Timezone reference: {timezoneLabel}. Chart displays the current 30-minute block based on the last received reading timestamp (prototype mode). Fast-forward mode advances simulated time by 30 seconds per real second.
-      </p>
+          <p className="text-xs text-slate-500">
+            Timezone reference: {timezoneLabel}. Chart displays the current 30-minute block based on the last received reading timestamp (prototype mode). Fast-forward mode advances simulated time by 30 seconds per real second.
+          </p>
+        </div>
+      )}
+
+      {activeTab === "notifications" && (
+        <div className="space-y-6">
+          <NotificationManager 
+            simulatorId={simulatorId} 
+            simulatorName={simulatorName}
+          />
+        </div>
+      )}
     </section>
   );
 }
