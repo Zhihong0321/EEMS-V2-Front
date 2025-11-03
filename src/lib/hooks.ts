@@ -355,22 +355,23 @@ export function useLatestBlock(
               
               if (!simulatorId) {
                 console.error(`🔔 [SSE] ❌ SimulatorId is null/undefined, skipping notification check`);
-                return;
-              }
+                // Don't return here, continue with state update
+              } else {
               
-              try {
-                console.log(`🔔 [SSE] 🚀 Calling checkThresholds...`);
-                notificationManager.checkThresholds(simulatorId, event.percent_of_target)
-                  .then(() => {
-                    console.log(`🔔 [SSE] ✅ Threshold check completed for ${simulatorId}`);
-                  })
-                  .catch(error => {
-                    console.error('🔔 [SSE] ❌ Error checking notification thresholds:', error);
-                  });
-              } catch (syncError) {
-                console.error('🔔 [SSE] ❌ Synchronous error calling checkThresholds:', syncError);
+                try {
+                  console.log(`🔔 [SSE] 🚀 Calling checkThresholds...`);
+                  notificationManager.checkThresholds(simulatorId, event.percent_of_target)
+                    .then(() => {
+                      console.log(`🔔 [SSE] ✅ Threshold check completed for ${simulatorId}`);
+                    })
+                    .catch(error => {
+                      console.error('🔔 [SSE] ❌ Error checking notification thresholds:', error);
+                    });
+                } catch (syncError) {
+                  console.error('🔔 [SSE] ❌ Synchronous error calling checkThresholds:', syncError);
+                }
+                console.log(`🔔 [SSE] ===== NOTIFICATION CHECK END =====`);
               }
-              console.log(`🔔 [SSE] ===== NOTIFICATION CHECK END =====`);
             } else {
               console.log(`🔔 [SSE] No percent_of_target in event, skipping notification check`);
             }
