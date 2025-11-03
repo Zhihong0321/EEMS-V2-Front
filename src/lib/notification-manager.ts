@@ -1,0 +1,388 @@
+import { 
+  NotificationTrigger, 
+  NotificationHistory, 
+  NotificationSettings,
+  NotificationError,
+  CreateNotificationTriggerInput,
+  UpdateNotificationTriggerInput,
+  Simulator
+} from './types';
+import { 
+  NotificationStorage, 
+  LocalStorageNotificationStorage,
+  createNotificationTrigger,
+  createNotificationHistory
+} from './notification-storage';
+import { validateNotificationTrigger } from './notification-validation';
+import { sendWhatsAppMessage, getWhatsAppStatus } from './whatsapp-api';
+import { 
+  NotificationValidator,
+  NotificationErrorHandler,
+  NotificationStorageError,
+  NotificationRateLimitError,
+  NotificationValidationError,
+  WhatsAppErrorHandler,
+  notificationErrorHandler
+} from './notification-errors';
+
+export class NotificationManager {
+  private storage: NotificationStorage;
+
+  constructor(storage?: NotificationStorage) {
+    this.storage = storage || new LocalStorageNotificationStorage();
+  }
+
+  // Core trigger management methods
+  async createTrigger(input: CreateNotificationTriggerInput): Promise<NotificationTrigger> {
+    try {
+      // Enhanced validation using new validator
+      NotificationValidator.validateTriggerData(input);
+
+      // Check for duplicates
+      const existingTriggers = await this.storage.getTriggersBySimulator(input.simulatorId);
+      const duplicate = existingTriggers.find(t => 
+        t.phoneNumber === input.phoneNumber && 
+        t.thresholdPercentage === input.thresholdPercentage
+      );
+
+      if (duplicate) {
+        throw new NotificationValidationError(
+          NotificationError.DUPLICATE_TRIGGER,
+          'A trigger with the same phone number and threshold already exists for this simulator'
+        );
+      }
+
+      // Create and save the trigger
+      const trigger = createNotificationTrigger(input);
+      await this.storage.saveTrigger(trigger);
+      
+      return trigger;
+    } catch (error) {
+      const handled = notificationErrorHandler.handleError(error as Error, 'createTrigger');
+      throw error; // Re-throw the original error for now
+    }
+  }
+
+  async updateTrigger(id: string, updates: UpdateNotificationTriggerInput): Promise<NotificationTrigger> {
+    // Get existing trigger
+    const existingTrigger = await this.storage.getTrigger(id);
+    if (!existingTrigger) {
+      throw new Error(`Trigger with id ${id} not found`);
+    }
+
+    // Validate updates if they include validation-sensitive fields
+    if (updates.phoneNumber || updates.thresholdPercentage || updates.simulatorId) {
+      const updatedData = {
+        phoneNumber: updates.phoneNumber || existingTrigger.phoneNumber,
+        thresholdPercentage: updates.thresholdPercentage || existingTrigger.thresholdPercentage,
+        simulatorId: updates.simulatorId || existingTrigger.simulatorId
+      };
+
+      const validation = validateNotificationTrigger(updatedData);
+      if (!validation.isValid) {
+        throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
+      }
+
+      // Check for duplicates (excluding current trigger)
+      const existingTriggers = await this.storage.getTriggersBySimulator(updatedData.simulatorId);
+      const duplicate = existingTriggers.find(t => 
+        t.id !== id &&
+        t.phoneNumber === updatedData.phoneNumber && 
+        t.thresholdPercentage === updatedData.thresholdPercentage
+      );
+
+      if (duplicate) {
+        throw new Error('A trigger with the same phone number and threshold already exists for this simulator');
+      }
+    }
+
+    // Update the trigger
+    await this.storage.updateTrigger(id, updates);
+    
+    // Return updated trigger
+    const updatedTrigger = await this.storage.getTrigger(id);
+    if (!updatedTrigger) {
+      throw new Error('Failed to retrieve updated trigger');
+    }
+    
+    return updatedTrigger;
+  }
+
+  async deleteTrigger(id: string): Promise<void> {
+    const trigger = await this.storage.getTrigger(id);
+    if (!trigger) {
+      throw new Error(`Trigger with id ${id} not found`);
+    }
+    
+    await this.storage.deleteTrigger(id);
+  }
+
+  async getTrigger(id: string): Promise<NotificationTrigger | null> {
+    return await this.storage.getTrigger(id);
+  }
+
+  async getTriggersBySimulator(simulatorId: string): Promise<NotificationTrigger[]> {
+    return await this.storage.getTriggersBySimulator(simulatorId);
+  }
+
+  async getAllTriggers(): Promise<NotificationTrigger[]> {
+    return await this.storage.getAllTriggers();
+  }
+
+  async getActiveTriggersBySimulator(simulatorId: string): Promise<NotificationTrigger[]> {
+    const triggers = await this.storage.getTriggersBySimulator(simulatorId);
+    return triggers.filter(t => t.isActive);
+  }
+
+  // Threshold monitoring and notification sending
+  async checkThresholds(simulatorId: string, currentPercentage: number): Promise<void> {
+    try {
+      // Get notification settings
+      const settings = await this.storage.getSettings();
+      
+      // Skip if notifications are globally disabled
+      if (!settings.enabledGlobally) {
+        return;
+      }
+
+      // Get active triggers for this simulator
+      const activeTriggers = await this.getActiveTriggersBySimulator(simulatorId);
+      
+      // Check each trigger
+      for (const trigger of activeTriggers) {
+        if (currentPercentage >= trigger.thresholdPercentage) {
+          await this.processTrigger(trigger, currentPercentage, settings);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking thresholds:', error);
+      // Don't throw here to prevent disrupting the main application flow
+    }
+  }
+
+  private async processTrigger(
+    trigger: NotificationTrigger, 
+    currentPercentage: number, 
+    settings: NotificationSettings
+  ): Promise<void> {
+    try {
+      // Check cooldown
+      const lastNotificationTime = await this.storage.getLastNotificationTime(trigger.id);
+      if (lastNotificationTime) {
+        const minutesSinceLastNotification = (Date.now() - lastNotificationTime.getTime()) / (1000 * 60);
+        if (minutesSinceLastNotification < settings.cooldownMinutes) {
+          return; // Still in cooldown period
+        }
+      }
+
+      // Check daily limit
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayHistory = await this.getTodayNotificationHistory(trigger.id, today);
+      
+      if (todayHistory.length >= settings.maxDailyNotifications) {
+        return; // Daily limit reached
+      }
+
+      // Send notification
+      const success = await this.sendNotification(trigger, currentPercentage);
+      
+      // Record the attempt
+      const historyEntry = createNotificationHistory(
+        trigger,
+        currentPercentage,
+        success,
+        success ? undefined : 'Failed to send WhatsApp message'
+      );
+      
+      await this.storage.saveNotificationHistory(historyEntry);
+      
+      // Update cooldown timestamp if successful
+      if (success) {
+        await this.storage.setLastNotificationTime(trigger.id, new Date());
+      }
+      
+    } catch (error) {
+      console.error('Error processing trigger:', error);
+      
+      // Record failed attempt
+      const historyEntry = createNotificationHistory(
+        trigger,
+        currentPercentage,
+        false,
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      
+      await this.storage.saveNotificationHistory(historyEntry);
+    }
+  }
+
+  async sendNotification(trigger: NotificationTrigger, currentPercentage: number): Promise<boolean> {
+    try {
+      // Check WhatsApp API status first
+      const status = await getWhatsAppStatus();
+      if (!status.ready) {
+        throw WhatsAppErrorHandler.handleWhatsAppError(
+          { code: 'API_UNAVAILABLE', message: 'WhatsApp API is not ready' },
+          trigger.phoneNumber
+        );
+      }
+
+      // Create notification message
+      const message = this.createNotificationMessage(
+        trigger.simulatorId, // We'll need simulator name in a future enhancement
+        currentPercentage,
+        trigger.thresholdPercentage
+      );
+
+      // Send the message
+      const result = await sendWhatsAppMessage({
+        to: trigger.phoneNumber,
+        message: message
+      });
+
+      if (!result.success) {
+        throw WhatsAppErrorHandler.handleWhatsAppError(
+          { message: result.error || 'Failed to send WhatsApp message' },
+          trigger.phoneNumber
+        );
+      }
+
+      return true;
+    } catch (error) {
+      const handled = notificationErrorHandler.handleError(error as Error, 'sendNotification');
+      console.error('Failed to send notification:', handled.message);
+      return false;
+    }
+  }
+
+  private createNotificationMessage(
+    simulatorId: string,
+    currentPercentage: number,
+    thresholdPercentage: number
+  ): string {
+    const timestamp = new Date().toLocaleString();
+    
+    return `🚨 EMS Alert: Energy Usage Threshold Exceeded
+
+Simulator: ${simulatorId}
+Current Usage: ${currentPercentage.toFixed(1)}% of target
+Threshold: ${thresholdPercentage}%
+
+Time: ${timestamp}
+
+Please check your energy consumption and take appropriate action.`;
+  }
+
+  // History and settings management
+  async getNotificationHistory(simulatorId: string, limit?: number): Promise<NotificationHistory[]> {
+    return await this.storage.getNotificationHistory(simulatorId, limit);
+  }
+
+  async getAllNotificationHistory(limit?: number): Promise<NotificationHistory[]> {
+    return await this.storage.getAllNotificationHistory(limit);
+  }
+
+  private async getTodayNotificationHistory(triggerId: string, today: Date): Promise<NotificationHistory[]> {
+    const allHistory = await this.storage.getAllNotificationHistory(1000); // Get recent history
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    return allHistory.filter(h => {
+      const sentDate = new Date(h.sentAt);
+      return h.triggerId === triggerId && 
+             sentDate >= today && 
+             sentDate < tomorrow;
+    });
+  }
+
+  async getSettings(): Promise<NotificationSettings> {
+    return await this.storage.getSettings();
+  }
+
+  async updateSettings(settings: Partial<NotificationSettings>): Promise<NotificationSettings> {
+    try {
+      // Enhanced validation using new validator
+      NotificationValidator.validateNotificationSettings(settings);
+
+      await this.storage.updateSettings(settings);
+      return await this.storage.getSettings();
+    } catch (error) {
+      const handled = notificationErrorHandler.handleError(error as Error, 'updateSettings');
+      throw error; // Re-throw the original error for now
+    }
+  }
+
+  // Utility methods
+  async getSystemStatus(): Promise<{
+    whatsappReady: boolean;
+    totalTriggers: number;
+    activeTriggers: number;
+    notificationsEnabled: boolean;
+    recentNotifications: number;
+  }> {
+    try {
+      const [whatsappStatus, allTriggers, settings, recentHistory] = await Promise.all([
+        getWhatsAppStatus(),
+        this.getAllTriggers(),
+        this.getSettings(),
+        this.getAllNotificationHistory(50)
+      ]);
+
+      const activeTriggers = allTriggers.filter(t => t.isActive);
+      
+      // Count notifications from last 24 hours
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const recentNotifications = recentHistory.filter(h => 
+        new Date(h.sentAt) > yesterday
+      ).length;
+
+      return {
+        whatsappReady: whatsappStatus.ready,
+        totalTriggers: allTriggers.length,
+        activeTriggers: activeTriggers.length,
+        notificationsEnabled: settings.enabledGlobally,
+        recentNotifications
+      };
+    } catch (error) {
+      console.error('Error getting system status:', error);
+      return {
+        whatsappReady: false,
+        totalTriggers: 0,
+        activeTriggers: 0,
+        notificationsEnabled: false,
+        recentNotifications: 0
+      };
+    }
+  }
+
+  async toggleTrigger(id: string, isActive: boolean): Promise<NotificationTrigger> {
+    return await this.updateTrigger(id, { isActive });
+  }
+
+  async bulkToggleTriggers(simulatorId: string, isActive: boolean): Promise<void> {
+    const triggers = await this.getTriggersBySimulator(simulatorId);
+    
+    for (const trigger of triggers) {
+      await this.updateTrigger(trigger.id, { isActive });
+    }
+  }
+
+  async clearNotificationHistory(simulatorId?: string): Promise<void> {
+    if (simulatorId) {
+      // Clear history for specific simulator
+      const allHistory = await this.storage.getAllNotificationHistory(10000);
+      const filteredHistory = allHistory.filter(h => h.simulatorId !== simulatorId);
+      
+      // This is a limitation of our current storage - we'd need to implement selective clearing
+      // For now, we'll throw an error to indicate this feature needs enhancement
+      throw new Error('Selective history clearing not yet implemented');
+    } else {
+      // Clear all history by saving empty array
+      await this.storage.clearAllData();
+    }
+  }
+}
+
+// Default notification manager instance
+export const notificationManager = new NotificationManager();

@@ -77,3 +77,74 @@ export type ApiErrorPayload = {
   };
   message?: string;
 };
+// WhatsApp Notification System Types
+
+export type NotificationTrigger = {
+  id: string;
+  simulatorId: string;
+  phoneNumber: string;
+  thresholdPercentage: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type NotificationHistory = {
+  id: string;
+  triggerId: string;
+  simulatorId: string;
+  phoneNumber: string;
+  thresholdPercentage: number;
+  actualPercentage: number;
+  sentAt: string;
+  success: boolean;
+  errorMessage?: string;
+};
+
+export type NotificationSettings = {
+  cooldownMinutes: number; // Prevent spam notifications
+  maxDailyNotifications: number;
+  enabledGlobally: boolean;
+};
+
+// Validation types
+export type PhoneNumberValidation = {
+  isValid: boolean;
+  error?: string;
+  formattedNumber?: string;
+};
+
+export type ThresholdValidation = {
+  isValid: boolean;
+  error?: string;
+  normalizedValue?: number;
+};
+
+// Error handling types
+export enum NotificationError {
+  WHATSAPP_API_UNAVAILABLE = 'WHATSAPP_API_UNAVAILABLE',
+  INVALID_PHONE_NUMBER = 'INVALID_PHONE_NUMBER',
+  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
+  STORAGE_ERROR = 'STORAGE_ERROR',
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  DUPLICATE_TRIGGER = 'DUPLICATE_TRIGGER',
+  COOLDOWN_ACTIVE = 'COOLDOWN_ACTIVE'
+}
+
+export type NotificationValidationError = {
+  type: NotificationError;
+  message: string;
+  field?: string;
+};
+
+// Storage and configuration types
+export type NotificationStorageKeys = {
+  TRIGGERS: 'notification_triggers';
+  HISTORY: 'notification_history';
+  SETTINGS: 'notification_settings';
+  COOLDOWNS: 'notification_cooldowns';
+};
+
+export type CreateNotificationTriggerInput = Omit<NotificationTrigger, 'id' | 'createdAt' | 'updatedAt'>;
+
+export type UpdateNotificationTriggerInput = Partial<Omit<NotificationTrigger, 'id' | 'createdAt' | 'updatedAt'>>;
