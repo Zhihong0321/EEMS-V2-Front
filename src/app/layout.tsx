@@ -15,7 +15,7 @@ export default function RootLayout({
 }) {
   // Deployment Validator - UPDATE THIS WITH EACH COMMIT
   const DEPLOYMENT_INFO = {
-    commitTitle: "Add deployment validator system", // UPDATE THIS WITH EACH COMMIT
+    commitTitle: "Fix JSX syntax error in simulators page", // UPDATE THIS WITH EACH COMMIT
     buildTime: process.env.BUILD_TIME || new Date().toISOString(),
     buildId: process.env.BUILD_ID || "dev"
   };

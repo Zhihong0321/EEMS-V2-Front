@@ -226,7 +226,6 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
         deleting={isDeleting}
       />
       </section>
-    </>
   );
 }
 
