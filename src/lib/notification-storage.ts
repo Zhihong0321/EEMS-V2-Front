@@ -30,6 +30,10 @@ export interface NotificationStorage {
   getLastNotificationTime(triggerId: string): Promise<Date | null>;
   setLastNotificationTime(triggerId: string, time: Date): Promise<void>;
   
+  // Hysteresis tracking (to prevent repeated triggers)
+  getLastTriggerPercentage(triggerId: string): Promise<number | null>;
+  setLastTriggerPercentage(triggerId: string, percentage: number): Promise<void>;
+  
   // Utility methods
   clearAllData(): Promise<void>;
   exportData(): Promise<string>;
@@ -41,7 +45,8 @@ const STORAGE_KEYS = {
   TRIGGERS: 'notification_triggers',
   HISTORY: 'notification_history',
   SETTINGS: 'notification_settings',
-  COOLDOWNS: 'notification_cooldowns'
+  COOLDOWNS: 'notification_cooldowns',
+  HYSTERESIS: 'notification_hysteresis'
 } as const;
 
 // Default settings
@@ -150,10 +155,14 @@ export class LocalStorageNotificationStorage implements NotificationStorage {
     
     this.safeSaveJSON(STORAGE_KEYS.TRIGGERS, filteredTriggers);
     
-    // Also clean up related cooldown data
+    // Also clean up related cooldown and hysteresis data
     const cooldowns = this.safeParseJSON<Record<string, string>>(STORAGE_KEYS.COOLDOWNS, {});
     delete cooldowns[id];
     this.safeSaveJSON(STORAGE_KEYS.COOLDOWNS, cooldowns);
+    
+    const hysteresis = this.safeParseJSON<Record<string, number>>(STORAGE_KEYS.HYSTERESIS, {});
+    delete hysteresis[id];
+    this.safeSaveJSON(STORAGE_KEYS.HYSTERESIS, hysteresis);
   }
 
   // History tracking
@@ -208,6 +217,18 @@ export class LocalStorageNotificationStorage implements NotificationStorage {
     const cooldowns = this.safeParseJSON<Record<string, string>>(STORAGE_KEYS.COOLDOWNS, {});
     cooldowns[triggerId] = time.toISOString();
     this.safeSaveJSON(STORAGE_KEYS.COOLDOWNS, cooldowns);
+  }
+
+  // Hysteresis tracking implementation
+  async getLastTriggerPercentage(triggerId: string): Promise<number | null> {
+    const hysteresis = this.safeParseJSON<Record<string, number>>(STORAGE_KEYS.HYSTERESIS, {});
+    return hysteresis[triggerId] ?? null;
+  }
+
+  async setLastTriggerPercentage(triggerId: string, percentage: number): Promise<void> {
+    const hysteresis = this.safeParseJSON<Record<string, number>>(STORAGE_KEYS.HYSTERESIS, {});
+    hysteresis[triggerId] = percentage;
+    this.safeSaveJSON(STORAGE_KEYS.HYSTERESIS, hysteresis);
   }
 
   // Utility methods

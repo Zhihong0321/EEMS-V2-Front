@@ -139,6 +139,12 @@ export class NotificationManager {
     try {
       console.log(`[NotificationManager] Checking thresholds for ${simulatorId} at ${currentPercentage}%`);
       
+      // Validate input parameters
+      if (typeof currentPercentage !== 'number' || isNaN(currentPercentage)) {
+        console.error(`[NotificationManager] Invalid currentPercentage: ${currentPercentage} (type: ${typeof currentPercentage})`);
+        return;
+      }
+      
       // Get notification settings
       const settings = await this.storage.getSettings();
       console.log(`[NotificationManager] Settings:`, settings);
@@ -156,9 +162,47 @@ export class NotificationManager {
       // Check each trigger
       for (const trigger of activeTriggers) {
         console.log(`[NotificationManager] Checking trigger ${trigger.id}: ${currentPercentage}% >= ${trigger.thresholdPercentage}%`);
-        if (currentPercentage >= trigger.thresholdPercentage) {
-          console.log(`[NotificationManager] Threshold exceeded! Processing trigger ${trigger.id}`);
-          await this.processTrigger(trigger, currentPercentage, settings);
+        console.log(`[NotificationManager] DEBUG - Types: currentPercentage=${typeof currentPercentage} (${currentPercentage}), thresholdPercentage=${typeof trigger.thresholdPercentage} (${trigger.thresholdPercentage})`);
+        
+        // Validate trigger threshold
+        if (typeof trigger.thresholdPercentage !== 'number' || isNaN(trigger.thresholdPercentage)) {
+          console.error(`[NotificationManager] Invalid threshold for trigger ${trigger.id}: ${trigger.thresholdPercentage} (type: ${typeof trigger.thresholdPercentage})`);
+          continue;
+        }
+        
+        // Ensure both values are numbers for proper comparison
+        const currentNum = Number(currentPercentage);
+        const thresholdNum = Number(trigger.thresholdPercentage);
+        
+        console.log(`[NotificationManager] DEBUG - Converted: currentNum=${currentNum}, thresholdNum=${thresholdNum}, comparison: ${currentNum} >= ${thresholdNum} = ${currentNum >= thresholdNum}`);
+        
+        // Check hysteresis to prevent repeated triggers
+        const lastTriggerPercentage = await this.storage.getLastTriggerPercentage(trigger.id);
+        const hysteresisMargin = 2; // 2% hysteresis margin
+        
+        if (lastTriggerPercentage !== null) {
+          // If we previously triggered and the percentage hasn't dropped significantly, skip
+          if (currentNum >= lastTriggerPercentage - hysteresisMargin) {
+            console.log(`[NotificationManager] 🔄 Hysteresis check: skipping trigger ${trigger.id} (current: ${currentNum}%, last trigger: ${lastTriggerPercentage}%, needs to drop below ${(lastTriggerPercentage - hysteresisMargin).toFixed(1)}%)`);
+            continue;
+          } else {
+            console.log(`[NotificationManager] ✅ Hysteresis check passed: percentage dropped sufficiently (current: ${currentNum}%, last trigger: ${lastTriggerPercentage}%)`);
+          }
+        }
+        
+        // FIXED: Use precise comparison to avoid floating point issues
+        if (currentNum >= thresholdNum) {
+          console.log(`[NotificationManager] ✅ Threshold exceeded! Processing trigger ${trigger.id} (${currentNum}% >= ${thresholdNum}%)`);
+          await this.processTrigger(trigger, currentNum, settings);
+          // Record the percentage at which we triggered for hysteresis
+          await this.storage.setLastTriggerPercentage(trigger.id, currentNum);
+        } else {
+          console.log(`[NotificationManager] ❌ Threshold NOT exceeded for trigger ${trigger.id} (${currentNum}% < ${thresholdNum}%)`);
+          // Reset hysteresis if we're well below the threshold
+          if (lastTriggerPercentage !== null && currentNum < thresholdNum - hysteresisMargin) {
+            console.log(`[NotificationManager] 🔄 Resetting hysteresis for trigger ${trigger.id} (current: ${currentNum}% < threshold - margin: ${(thresholdNum - hysteresisMargin).toFixed(1)}%)`);
+            await this.storage.setLastTriggerPercentage(trigger.id, 0);
+          }
         }
       }
     } catch (error) {
@@ -175,15 +219,19 @@ export class NotificationManager {
     try {
       console.log(`[NotificationManager] Processing trigger ${trigger.id} for ${trigger.phoneNumber}`);
       
-      // Check cooldown
+      // Check cooldown with more detailed logging
       const lastNotificationTime = await this.storage.getLastNotificationTime(trigger.id);
       if (lastNotificationTime) {
         const minutesSinceLastNotification = (Date.now() - lastNotificationTime.getTime()) / (1000 * 60);
-        console.log(`[NotificationManager] Minutes since last notification: ${minutesSinceLastNotification}, cooldown: ${settings.cooldownMinutes}`);
+        console.log(`[NotificationManager] Cooldown check: ${minutesSinceLastNotification.toFixed(2)} minutes since last notification, cooldown period: ${settings.cooldownMinutes} minutes`);
         if (minutesSinceLastNotification < settings.cooldownMinutes) {
-          console.log(`[NotificationManager] Still in cooldown period, skipping`);
+          console.log(`[NotificationManager] ⏰ Still in cooldown period (${(settings.cooldownMinutes - minutesSinceLastNotification).toFixed(2)} minutes remaining), skipping notification`);
           return; // Still in cooldown period
+        } else {
+          console.log(`[NotificationManager] ✅ Cooldown period expired, proceeding with notification`);
         }
+      } else {
+        console.log(`[NotificationManager] ✅ No previous notification found, proceeding with first notification`);
       }
 
       // Check daily limit
