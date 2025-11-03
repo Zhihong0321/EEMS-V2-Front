@@ -8,6 +8,21 @@ import { notificationManager } from "./notification-manager";
 
 console.log('🚀 [HOOKS] Hooks file loaded, notificationManager imported:', !!notificationManager);
 
+// Debug: Check notification system on load
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', async () => {
+    console.log('🔍 [HOOKS] Page loaded, checking notification system...');
+    try {
+      const settings = await notificationManager.getSettings();
+      const allTriggers = await notificationManager.getAllTriggers();
+      console.log('🔍 [HOOKS] Notification settings:', settings);
+      console.log('🔍 [HOOKS] All triggers:', allTriggers);
+    } catch (error) {
+      console.error('🔍 [HOOKS] Error checking notification system:', error);
+    }
+  });
+}
+
 export function useSimulators(initialSimulators: Simulator[] = []) {
   const { push } = useToast();
   const [simulators, setSimulators] = useState<Simulator[]>(initialSimulators);
@@ -332,20 +347,32 @@ export function useLatestBlock(
 
             // Check notification thresholds when percentage updates
             if (event.percent_of_target !== undefined) {
-              console.log(`🔔 [SSE] Checking thresholds for ${simulatorId}: ${event.percent_of_target}%`);
+              console.log(`🔔 [SSE] ===== NOTIFICATION CHECK START =====`);
+              console.log(`🔔 [SSE] SimulatorId: "${simulatorId}" (type: ${typeof simulatorId})`);
+              console.log(`🔔 [SSE] Percentage: ${event.percent_of_target}% (type: ${typeof event.percent_of_target})`);
               console.log(`🔔 [SSE] NotificationManager available:`, !!notificationManager);
+              console.log(`🔔 [SSE] Event object:`, event);
+              
+              if (!simulatorId) {
+                console.error(`🔔 [SSE] ❌ SimulatorId is null/undefined, skipping notification check`);
+                return;
+              }
               
               try {
+                console.log(`🔔 [SSE] 🚀 Calling checkThresholds...`);
                 notificationManager.checkThresholds(simulatorId, event.percent_of_target)
                   .then(() => {
-                    console.log(`🔔 [SSE] Threshold check completed for ${simulatorId}`);
+                    console.log(`🔔 [SSE] ✅ Threshold check completed for ${simulatorId}`);
                   })
                   .catch(error => {
-                    console.error('🔔 [SSE] Error checking notification thresholds:', error);
+                    console.error('🔔 [SSE] ❌ Error checking notification thresholds:', error);
                   });
               } catch (syncError) {
-                console.error('🔔 [SSE] Synchronous error calling checkThresholds:', syncError);
+                console.error('🔔 [SSE] ❌ Synchronous error calling checkThresholds:', syncError);
               }
+              console.log(`🔔 [SSE] ===== NOTIFICATION CHECK END =====`);
+            } else {
+              console.log(`🔔 [SSE] No percent_of_target in event, skipping notification check`);
             }
 
             return {

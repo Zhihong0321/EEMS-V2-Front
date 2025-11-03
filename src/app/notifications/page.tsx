@@ -39,6 +39,22 @@ export default function NotificationsPage() {
 
   const selectedSimulator = simulators.find(s => s.id === selectedSimulatorId);
 
+  const handleDebugNotifications = async () => {
+    if (!selectedSimulatorId) {
+      console.error('No simulator selected for debugging');
+      return;
+    }
+    
+    console.log('🔍 [DEBUG] Starting notification system diagnosis...');
+    
+    // Import the debug function
+    const { diagnoseNotificationSystem } = await import('@/lib/debug-triggers');
+    const result = await diagnoseNotificationSystem(selectedSimulatorId);
+    
+    console.log('🔍 [DEBUG] Diagnosis complete:', result);
+    alert(`Diagnosis complete! Check console for details.\n\nQuick summary:\n- Triggers: ${result.totalTriggers || 0}\n- Active: ${result.activeTriggers || 0}\n- WhatsApp Ready: ${result.whatsappStatus?.ready || false}\n- Notifications Enabled: ${result.settings?.enabledGlobally || false}`);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 p-6">
@@ -99,14 +115,27 @@ export default function NotificationsPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Page Header */}
         <header className="space-y-4">
-          <div className="flex items-center gap-3">
-            <BellIcon className="h-8 w-8 text-primary" />
-            <div>
-              <h1 className="text-3xl font-bold text-white">WhatsApp Notifications</h1>
-              <p className="text-slate-400">
-                Manage notification triggers for your energy management simulators
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <BellIcon className="h-8 w-8 text-primary" />
+              <div>
+                <h1 className="text-3xl font-bold text-white">WhatsApp Notifications</h1>
+                <p className="text-slate-400">
+                  Manage notification triggers for your energy management simulators
+                </p>
+              </div>
             </div>
+            
+            {/* Debug Button */}
+            {selectedSimulatorId && (
+              <button
+                onClick={handleDebugNotifications}
+                className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md transition-colors text-sm font-medium"
+                title="Debug notification system"
+              >
+                🔍 Debug System
+              </button>
+            )}
           </div>
 
           {/* Simulator Selector */}
