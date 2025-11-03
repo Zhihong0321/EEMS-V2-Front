@@ -5,6 +5,7 @@ import { ingestReadings, deleteFutureReadings, getLastReadingTimestamp } from ".
 import type { TickIn } from "./types";
 import { useToast } from "@/components/ui/toast-provider";
 import { sendStartupNotifications } from "./startup-notifications";
+import { debugStartupNotifications } from "./startup-debug";
 
 // Shared constants for both auto and manual emitters
 const EMITTER_INTERVAL_MS = 2_000; // 2 seconds per signal
@@ -146,14 +147,24 @@ function useEmitter({ simulatorId, simulatorName, intervalMs, mode, getTick, fas
 
     // Send startup notifications for Auto Run mode
     if (mode === "auto") {
-      console.log(`🚀 [EMITTER] Auto Run starting - sending startup notifications for ${simulatorId}`);
+      console.log(`🚀 [EMITTER] ===== AUTO RUN STARTUP DETECTED =====`);
+      console.log(`🚀 [EMITTER] SimulatorId: "${simulatorId}" (type: ${typeof simulatorId})`);
+      console.log(`🚀 [EMITTER] SimulatorName: "${simulatorName}" (type: ${typeof simulatorName})`);
+      console.log(`🚀 [EMITTER] Mode: "${mode}"`);
+      
       try {
+        // Run debug first to see what's happening
+        console.log(`🚀 [EMITTER] Running debug check...`);
+        await debugStartupNotifications(simulatorId);
+        
+        console.log(`🚀 [EMITTER] Now calling sendStartupNotifications...`);
         await sendStartupNotifications(simulatorId, mode, simulatorName);
-        console.log(`🚀 [EMITTER] Startup notifications sent successfully`);
+        console.log(`🚀 [EMITTER] ✅ Startup notifications completed successfully`);
       } catch (error) {
-        console.error(`🚀 [EMITTER] Failed to send startup notifications:`, error);
+        console.error(`🚀 [EMITTER] ❌ Failed to send startup notifications:`, error);
         // Don't block simulator start if notifications fail
       }
+      console.log(`🚀 [EMITTER] ===== AUTO RUN STARTUP COMPLETED =====`);
     }
 
     // Delete future readings from backend when simulator starts

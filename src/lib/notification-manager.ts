@@ -408,9 +408,40 @@ if (typeof window !== 'undefined') {
       return false;
     }
   };
+
+  // Debug startup notifications
+  (window as any).debugStartupNotifications = async (simulatorId: string) => {
+    console.log(`🔍 [TEST] Running startup notifications debug for ${simulatorId}...`);
+    try {
+      const { debugStartupNotifications } = await import('./startup-debug');
+      await debugStartupNotifications(simulatorId);
+      console.log(`🔍 [TEST] Debug completed`);
+      return true;
+    } catch (error) {
+      console.error(`🔍 [TEST] Debug failed:`, error);
+      return false;
+    }
+  };
+
+  // Quick trigger check
+  (window as any).checkTriggers = async (simulatorId: string) => {
+    console.log(`🔍 [TEST] Checking triggers for ${simulatorId}...`);
+    try {
+      const allTriggers = await notificationManager.getTriggersBySimulator(simulatorId);
+      const activeTriggers = await notificationManager.getActiveTriggersBySimulator(simulatorId);
+      console.log(`🔍 [TEST] All triggers:`, allTriggers);
+      console.log(`🔍 [TEST] Active triggers:`, activeTriggers);
+      return { allTriggers, activeTriggers };
+    } catch (error) {
+      console.error(`🔍 [TEST] Check triggers failed:`, error);
+      return null;
+    }
+  };
   
   console.log('🚀 Available functions:');
   console.log('  testStartup(phoneNumber, simulatorId) - Test if WhatsApp works');
   console.log('  testTrigger(simulatorId, percentage) - Test threshold trigger');
   console.log('  testStartupNotifications(simulatorId, simulatorName?) - Test startup notification system');
+  console.log('  debugStartupNotifications(simulatorId) - Debug startup notification issues');
+  console.log('  checkTriggers(simulatorId) - Check triggers for a simulator');
 }
