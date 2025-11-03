@@ -29,13 +29,13 @@ declare namespace __next_route_internal_types__ {
     S extends `${string}${SearchOrHash}` ? never : S
 
   type StaticRoutes = 
-    | `/api/whatsapp/qr`
-    | `/api/whatsapp/status`
-    | `/dashboard`
-    | `/notifications`
     | `/api/whatsapp/send`
-    | `/test-features`
+    | `/api/whatsapp/qr`
+    | `/notifications`
     | `/`
+    | `/test-features`
+    | `/dashboard`
+    | `/api/whatsapp/status`
     | `/health`
   type DynamicRoutes<T extends string = string> = 
     | `/${SafeSlug<T>}`

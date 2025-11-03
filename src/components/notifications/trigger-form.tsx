@@ -78,12 +78,16 @@ export function TriggerForm({
   const validateField = (field: keyof FormData, value: string | boolean): string | undefined => {
     switch (field) {
       case 'phoneNumber':
-        if (!value || typeof value !== 'string') return 'Phone number is required';
+        if (!value || typeof value !== 'string' || (value as string).trim() === '') {
+          return 'Phone number is required';
+        }
         const phoneValidation = validatePhoneNumber(value as string);
         return phoneValidation.isValid ? undefined : phoneValidation.error;
       
       case 'thresholdPercentage':
-        if (!value || typeof value !== 'string') return 'Threshold percentage is required';
+        if (!value || typeof value !== 'string' || (value as string).trim() === '') {
+          return 'Threshold percentage is required';
+        }
         const thresholdValidation = validateThresholdPercentage(value as string);
         return thresholdValidation.isValid ? undefined : thresholdValidation.error;
       
@@ -214,14 +218,14 @@ export function TriggerForm({
           <InputWrapper
             label="WhatsApp Phone Number"
             error={errors.phoneNumber}
-            helperText="Enter phone number with country code (e.g., +60123456789)"
+            helperText="Enter phone number with country code (e.g., 60123456789)"
             required
           >
             <Input
               type="tel"
               value={formData.phoneNumber}
               onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-              placeholder="+60123456789"
+              placeholder="60123456789"
               error={!!errors.phoneNumber}
               disabled={isSubmitting || isLoading}
             />
@@ -280,7 +284,7 @@ export function TriggerForm({
             <Button
               type="submit"
               isLoading={isSubmitting}
-              disabled={isLoading || !isDirty || Object.keys(errors).length > 0}
+              disabled={isLoading || Object.keys(errors).length > 0}
               className="flex-1"
             >
               {isSubmitting 

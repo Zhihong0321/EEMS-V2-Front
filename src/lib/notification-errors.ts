@@ -204,15 +204,8 @@ export class NotificationValidator {
 
     const cleaned = phoneNumber.replace(/[\s\-\(\)]/g, '');
     
-    if (!cleaned.startsWith('+')) {
-      throw new NotificationValidationError(
-        NotificationError.INVALID_PHONE_NUMBER,
-        'Phone number must start with country code (e.g., +60123456789)',
-        'phoneNumber'
-      );
-    }
-
-    const numberOnly = cleaned.substring(1);
+    // Remove + if present (optional)
+    const numberOnly = cleaned.startsWith('+') ? cleaned.substring(1) : cleaned;
     
     if (!/^\d+$/.test(numberOnly)) {
       throw new NotificationValidationError(

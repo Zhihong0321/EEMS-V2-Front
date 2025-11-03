@@ -2,7 +2,7 @@ import { PhoneNumberValidation, ThresholdValidation, NotificationError } from '.
 
 /**
  * Validates phone number format for WhatsApp notifications
- * Accepts international format with country code (e.g., +60123456789)
+ * Accepts international format with country code (e.g., 60123456789)
  */
 export function validatePhoneNumber(phoneNumber: string): PhoneNumberValidation {
   if (!phoneNumber || typeof phoneNumber !== 'string') {
@@ -12,38 +12,27 @@ export function validatePhoneNumber(phoneNumber: string): PhoneNumberValidation 
     };
   }
 
-  // Remove all whitespace and special characters except +
-  const cleaned = phoneNumber.replace(/[\s\-\(\)]/g, '');
+  // Remove all whitespace and special characters including +
+  const cleaned = phoneNumber.replace(/[\s\-\(\)\+]/g, '');
   
-  // Check if it starts with + and has country code
-  if (!cleaned.startsWith('+')) {
+  // Check if all characters are digits
+  if (!/^\d+$/.test(cleaned)) {
     return {
       isValid: false,
-      error: 'Phone number must start with country code (e.g., +60123456789)'
-    };
-  }
-
-  // Remove the + for further validation
-  const numberOnly = cleaned.substring(1);
-  
-  // Check if all remaining characters are digits
-  if (!/^\d+$/.test(numberOnly)) {
-    return {
-      isValid: false,
-      error: 'Phone number can only contain digits after country code'
+      error: 'Phone number can only contain digits'
     };
   }
 
   // Check length (country code + number should be 10-15 digits total)
-  if (numberOnly.length < 10 || numberOnly.length > 15) {
+  if (cleaned.length < 10 || cleaned.length > 15) {
     return {
       isValid: false,
       error: 'Phone number must be 10-15 digits including country code'
     };
   }
 
-  // Basic country code validation (1-4 digits)
-  const countryCodeMatch = numberOnly.match(/^(\d{1,4})/);
+  // Basic country code validation (1-4 digits at start)
+  const countryCodeMatch = cleaned.match(/^(\d{1,4})/);
   if (!countryCodeMatch) {
     return {
       isValid: false,
@@ -144,9 +133,9 @@ export function formatPhoneNumberForDisplay(phoneNumber: string): string {
   }
 
   const number = validation.formattedNumber;
-  // Format as +XX XXX XXX XXXX (adjust based on length)
+  // Format as XX XXX XXX XXXX (adjust based on length)
   if (number.length <= 13) {
-    return number.replace(/(\+\d{1,3})(\d{3})(\d{3})(\d+)/, '$1 $2 $3 $4');
+    return number.replace(/(\d{1,3})(\d{3})(\d{3})(\d+)/, '$1 $2 $3 $4');
   }
   return number;
 }
