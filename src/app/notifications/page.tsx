@@ -126,9 +126,45 @@ export default function NotificationsPage() {
               </div>
             </div>
             
-            {/* Test Buttons */}
-            {selectedSimulatorId && (
-              <div className="flex gap-2">
+            {/* Test Buttons - Always visible for debugging */}
+            <div className="flex gap-2">
+              {!selectedSimulatorId && (
+                <div className="text-yellow-400 text-sm">
+                  No simulator selected (simulators: {simulators.length})
+                </div>
+              )}
+              
+              {/* Simple test button that always works */}
+              <button
+                onClick={async () => {
+                  try {
+                    const phoneNumber = '60123456789'; // Replace with your number
+                    const message = `🧪 SIMPLE TEST\n\nTime: ${new Date().toLocaleString()}\n\nThis is a basic test message!`;
+                    
+                    // Send via WhatsApp API
+                    const { sendWhatsAppMessage } = await import('@/lib/whatsapp-api');
+                    const result = await sendWhatsAppMessage({
+                      to: phoneNumber,
+                      message: message
+                    });
+                    
+                    console.log('Test result:', result);
+                    
+                    if (result.success) {
+                      alert('✅ Simple test sent successfully!');
+                    } else {
+                      alert('❌ Simple test failed: ' + result.error);
+                    }
+                  } catch (error) {
+                    console.error('Test error:', error);
+                    alert('❌ Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
+                  }
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-sm font-medium"
+                title="Simple test - no simulator required"
+              >
+                🚀 Simple Test
+              </button>
                 <button
                   onClick={async () => {
                     try {
@@ -178,15 +214,15 @@ export default function NotificationsPage() {
                 >
                   📱 Send Test
                 </button>
-                <button
-                  onClick={handleDebugNotifications}
-                  className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md transition-colors text-sm font-medium"
-                  title="Debug notification system"
-                >
-                  🔍 Debug System
-                </button>
-              </div>
-            )}
+              <button
+                onClick={handleDebugNotifications}
+                className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md transition-colors text-sm font-medium"
+                title="Debug notification system"
+                disabled={!selectedSimulatorId}
+              >
+                🔍 Debug System
+              </button>
+            </div>
           </div>
 
           {/* Simulator Selector */}
