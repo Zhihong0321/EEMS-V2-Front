@@ -10,11 +10,15 @@ export function calculateMaximumDemand(
 ): MaximumDemandData {
   console.log('🔍 MD Calculation Debug:', {
     totalBlocks: historyBlocks.length,
+    tariffType,
     blocks: historyBlocks.map(b => ({
       time: b.block_start_local,
       kwh: b.accumulated_kwh,
+      target: b.target_kwh,
+      percent: b.percent_of_target,
       parsed: new Date(b.block_start_local),
-      hour: new Date(b.block_start_local).getHours()
+      hour: new Date(b.block_start_local).getHours(),
+      isValidDate: !isNaN(new Date(b.block_start_local).getTime())
     }))
   });
 
@@ -39,13 +43,35 @@ export function calculateMaximumDemand(
 
   // Find the highest accumulated_kwh during peak hours
   // Convert kWh to kW (30-min block, so multiply by 2 to get hourly rate)
-  const monthlyHighestKw = peakHourBlocks.length > 0 
-    ? Math.max(...peakHourBlocks.map(block => {
-        const kw = block.accumulated_kwh * 2;
-        console.log('⚡ kWh to kW conversion:', { kwh: block.accumulated_kwh, kw });
-        return kw;
-      }))
-    : 0;
+  let monthlyHighestKw = 0;
+  
+  if (peakHourBlocks.length > 0) {
+    const kwValues = peakHourBlocks.map(block => {
+      const kw = block.accumulated_kwh * 2;
+      console.log('⚡ kWh to kW conversion:', { 
+        time: block.block_start_local,
+        kwh: block.accumulated_kwh, 
+        kw,
+        percent: block.percent_of_target 
+      });
+      return kw;
+    });
+    monthlyHighestKw = Math.max(...kwValues);
+  } else {
+    console.log('⚠️ No peak hour blocks found. Checking all blocks for debugging...');
+    // For debugging: show all blocks regardless of time
+    historyBlocks.forEach(block => {
+      const blockTime = new Date(block.block_start_local);
+      const hour = blockTime.getHours();
+      console.log('🕐 All blocks analysis:', {
+        time: block.block_start_local,
+        hour,
+        isPeakHour: hour >= 14 && hour < 22,
+        kwh: block.accumulated_kwh,
+        kw: block.accumulated_kwh * 2
+      });
+    });
+  }
 
   const tariffRate = TARIFF_RATES[tariffType];
   const totalDemandCharge = monthlyHighestKw * tariffRate;

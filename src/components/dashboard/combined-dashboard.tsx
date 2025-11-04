@@ -271,6 +271,13 @@ export function CombinedDashboard({
         tariffType={simulator?.tariff_type || "Medium"}
         plantName={simulator?.plant_name || simulatorName}
       />
+      
+      {/* Debug: Log history blocks */}
+      {console.log('📊 Dashboard history blocks:', { 
+        count: history.length, 
+        blocks: history,
+        loading: historyLoading 
+      })}
 
 
 
