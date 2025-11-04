@@ -5,23 +5,7 @@ import { createSimulator, deleteSimulator, fetchBlockHistory, fetchLatestBlock, 
 import type { CreateSimulatorInput, HistoryBlock, LatestBlock, Simulator, SseEvent } from "./types";
 import { useToast } from "@/components/ui/toast-provider";
 import { notificationManager } from "./notification-manager";
-
-console.log('🚀 [HOOKS] Hooks file loaded, notificationManager imported:', !!notificationManager);
-
-// Debug: Check notification system on load
-if (typeof window !== 'undefined') {
-  window.addEventListener('load', async () => {
-    console.log('🔍 [HOOKS] Page loaded, checking notification system...');
-    try {
-      const settings = await notificationManager.getSettings();
-      const allTriggers = await notificationManager.getAllTriggers();
-      console.log('🔍 [HOOKS] Notification settings:', settings);
-      console.log('🔍 [HOOKS] All triggers:', allTriggers);
-    } catch (error) {
-      console.error('🔍 [HOOKS] Error checking notification system:', error);
-    }
-  });
-}
+import { debug } from "./debug";
 
 export function useSimulators(initialSimulators: Simulator[] = []) {
   const { push } = useToast();
@@ -73,7 +57,7 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
         
         // Send startup notification and log to history
         try {
-          console.log('🚀 [STARTUP] Sending startup notification...');
+          debug.log('[STARTUP] Sending startup notification...');
           
           const phoneNumber = '60123456789'; // Replace with your number
           const message = `🚀 Simulator Started!\n\nName: ${simulator.name}\nTarget: ${simulator.target_kwh} kWh\nTime: ${new Date().toLocaleString()}\n\nYour energy simulator is now running!`;
@@ -108,9 +92,9 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
           const storage = new (await import('./notification-storage')).LocalStorageNotificationStorage();
           await storage.saveNotificationHistory(historyEntry);
           
-          console.log(`${result.success ? '✅' : '❌'} [STARTUP] Startup notification ${result.success ? 'sent' : 'failed'} and logged to history`);
+          debug.log(`[STARTUP] Startup notification ${result.success ? 'sent' : 'failed'} and logged to history`);
         } catch (error) {
-          console.error('❌ [STARTUP] Error sending startup notification:', error);
+          debug.error('[STARTUP] Error sending startup notification:', error);
         }
         
         // After a successful create, refresh from the server to ensure we show
@@ -334,7 +318,7 @@ export function useLatestBlock(
           const data = JSON.parse(event.data) as SseEvent;
           processEvent(data);
         } catch (error) {
-          console.warn("Failed to parse SSE event", error);
+          debug.warn("Failed to parse SSE event", error);
         }
       };
 
@@ -371,7 +355,7 @@ export function useLatestBlock(
             return prev;
           }
           if (event.type === "block-update") {
-            console.log('🔄 [SSE] Block-update event received:', event);
+            debug.log('[SSE] Block-update event received:', event);
             const previousBlock = prev.block;
             const nextBlock: LatestBlock | null = previousBlock
               ? {
@@ -389,34 +373,15 @@ export function useLatestBlock(
             }
 
             // Check notification thresholds when percentage updates
-            if (event.percent_of_target !== undefined) {
-              console.log(`🔔 [SSE] ===== NOTIFICATION CHECK START =====`);
-              console.log(`🔔 [SSE] SimulatorId: "${simulatorId}" (type: ${typeof simulatorId})`);
-              console.log(`🔔 [SSE] Percentage: ${event.percent_of_target}% (type: ${typeof event.percent_of_target})`);
-              console.log(`🔔 [SSE] NotificationManager available:`, !!notificationManager);
-              console.log(`🔔 [SSE] Event object:`, event);
-              
-              if (!simulatorId) {
-                console.error(`🔔 [SSE] ❌ SimulatorId is null/undefined, skipping notification check`);
-                // Don't return here, continue with state update
-              } else {
-              
-                try {
-                  console.log(`🔔 [SSE] 🚀 Calling checkThresholds...`);
-                  notificationManager.checkThresholds(simulatorId, event.percent_of_target)
-                    .then(() => {
-                      console.log(`🔔 [SSE] ✅ Threshold check completed for ${simulatorId}`);
-                    })
-                    .catch(error => {
-                      console.error('🔔 [SSE] ❌ Error checking notification thresholds:', error);
-                    });
-                } catch (syncError) {
-                  console.error('🔔 [SSE] ❌ Synchronous error calling checkThresholds:', syncError);
-                }
-                console.log(`🔔 [SSE] ===== NOTIFICATION CHECK END =====`);
+            if (event.percent_of_target !== undefined && simulatorId) {
+              try {
+                notificationManager.checkThresholds(simulatorId, event.percent_of_target)
+                  .catch(error => {
+                    debug.error('[SSE] Error checking notification thresholds:', error);
+                  });
+              } catch (syncError) {
+                debug.error('[SSE] Synchronous error calling checkThresholds:', syncError);
               }
-            } else {
-              console.log(`🔔 [SSE] No percent_of_target in event, skipping notification check`);
             }
 
             return {

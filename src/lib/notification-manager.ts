@@ -24,6 +24,7 @@ import {
   WhatsAppErrorHandler,
   notificationErrorHandler
 } from './notification-errors';
+import { debug } from './debug';
 
 export class NotificationManager {
   private storage: NotificationStorage;
@@ -136,25 +137,23 @@ export class NotificationManager {
 
   // SIMPLE threshold monitoring - no complex logic
   async checkThresholds(simulatorId: string, currentPercentage: number): Promise<void> {
-    console.log(`[NotificationManager] SIMPLE CHECK: ${simulatorId} at ${currentPercentage}%`);
+    debug.log(`[NotificationManager] Checking ${simulatorId} at ${currentPercentage}%`);
     
     // Get active triggers
     const activeTriggers = await this.getActiveTriggersBySimulator(simulatorId);
-    console.log(`[NotificationManager] Found ${activeTriggers.length} active triggers`);
+    debug.log(`[NotificationManager] Found ${activeTriggers.length} active triggers`);
     
     // Check each trigger - SIMPLE LOGIC ONLY
     for (const trigger of activeTriggers) {
-      console.log(`[NotificationManager] Checking: ${currentPercentage} >= ${trigger.thresholdPercentage}?`);
-      
       if (currentPercentage >= trigger.thresholdPercentage) {
-        console.log(`[NotificationManager] 🚨 TRIGGER FIRED! Sending notification...`);
+        debug.log(`[NotificationManager] Trigger fired for ${trigger.phoneNumber}`);
         
         // SIMPLE: Just send the notification, no complex checks
         try {
           const success = await this.sendNotification(trigger, currentPercentage);
-          console.log(`[NotificationManager] Notification result: ${success ? 'SUCCESS' : 'FAILED'}`);
+          debug.log(`[NotificationManager] Notification ${success ? 'sent' : 'failed'}`);
         } catch (error) {
-          console.error(`[NotificationManager] Notification error:`, error);
+          debug.error(`[NotificationManager] Notification error:`, error);
         }
       }
     }
@@ -196,7 +195,7 @@ export class NotificationManager {
       return true;
     } catch (error) {
       const handled = notificationErrorHandler.handleError(error as Error, 'sendNotification');
-      console.error(`[NotificationManager] Failed to send notification to ${trigger.phoneNumber}:`, handled.message);
+      debug.error(`[NotificationManager] Failed to send notification to ${trigger.phoneNumber}:`, handled.message);
       
       // Store the specific error for history logging
       (error as any).detailedMessage = handled.message;
@@ -293,7 +292,7 @@ Please check your energy consumption and take appropriate action.`;
         recentNotifications
       };
     } catch (error) {
-      console.error('Error getting system status:', error);
+      debug.error('Error getting system status:', error);
       return {
         whatsappReady: false,
         totalTriggers: 0,
@@ -335,7 +334,7 @@ Please check your energy consumption and take appropriate action.`;
 // Default notification manager instance
 export const notificationManager = new NotificationManager();
 
-console.log('🚀 [INIT] NotificationManager loaded and ready');
+debug.log('[INIT] NotificationManager loaded and ready');
 
 // Add startup test method
 (notificationManager as any).sendStartupTest = async function(phoneNumber: string, simulatorId: string): Promise<boolean> {
@@ -369,7 +368,7 @@ If you receive this, notifications are working! 🎉`;
 
 // Simple test functions (available in browser console)
 if (typeof window !== 'undefined') {
-  console.log('🚀 [INIT] Adding test functions to window');
+  debug.log('[INIT] Adding test functions to window');
   
   // Test startup notification
   (window as any).testStartup = async (phoneNumber: string, simulatorId: string) => {

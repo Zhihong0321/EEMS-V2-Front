@@ -6,6 +6,7 @@ import type { TickIn } from "./types";
 import { useToast } from "@/components/ui/toast-provider";
 import { sendStartupNotifications } from "./startup-notifications";
 import { debugStartupNotifications } from "./startup-debug";
+import { debug } from "./debug";
 
 // Shared constants for both auto and manual emitters
 const EMITTER_INTERVAL_MS = 2_000; // 2 seconds per signal
@@ -147,32 +148,23 @@ function useEmitter({ simulatorId, simulatorName, intervalMs, mode, getTick, fas
 
     // Send startup notifications for Auto Run mode
     if (mode === "auto") {
-      console.log(`🚀 [EMITTER] ===== AUTO RUN STARTUP DETECTED =====`);
-      console.log(`🚀 [EMITTER] SimulatorId: "${simulatorId}" (type: ${typeof simulatorId})`);
-      console.log(`🚀 [EMITTER] SimulatorName: "${simulatorName}" (type: ${typeof simulatorName})`);
-      console.log(`🚀 [EMITTER] Mode: "${mode}"`);
-      
       try {
-        // Run debug first to see what's happening
-        console.log(`🚀 [EMITTER] Running debug check...`);
+        debug.log(`[EMITTER] Auto run startup detected for ${simulatorId}`);
         await debugStartupNotifications(simulatorId);
-        
-        console.log(`🚀 [EMITTER] Now calling sendStartupNotifications...`);
         await sendStartupNotifications(simulatorId, mode, simulatorName);
-        console.log(`🚀 [EMITTER] ✅ Startup notifications completed successfully`);
+        debug.log(`[EMITTER] Startup notifications completed`);
       } catch (error) {
-        console.error(`🚀 [EMITTER] ❌ Failed to send startup notifications:`, error);
+        debug.error(`[EMITTER] Failed to send startup notifications:`, error);
         // Don't block simulator start if notifications fail
       }
-      console.log(`🚀 [EMITTER] ===== AUTO RUN STARTUP COMPLETED =====`);
     }
 
     // Delete future readings from backend when simulator starts
     // This ensures clean start without old fast-forward data interfering
-    void deleteFutureReadings(simulatorId).catch((error) => {
-      // Log but don't block simulator start if cleanup fails
-      console.warn("Failed to delete future readings:", error);
-    });
+      void deleteFutureReadings(simulatorId).catch((error) => {
+        // Log but don't block simulator start if cleanup fails
+        debug.warn("Failed to delete future readings:", error);
+      });
 
     // Get last reading timestamp and continue from there
     // This creates continuous simulated data and prevents chart gaps
@@ -187,9 +179,9 @@ function useEmitter({ simulatorId, simulatorName, intervalMs, mode, getTick, fas
         lastSimulatedTsRef.current = new Date();
       }
       // If fast-forward disabled, lastSimulatedTsRef stays null (will use current time in sendTick)
-    } catch (error) {
-      // If fetch fails, start from current time (default behavior)
-      console.warn("Failed to get last reading timestamp, starting from current time:", error);
+      } catch (error) {
+        // If fetch fails, start from current time (default behavior)
+        debug.warn("Failed to get last reading timestamp, starting from current time:", error);
       if (fastForwardEnabled) {
         lastSimulatedTsRef.current = new Date();
       }
