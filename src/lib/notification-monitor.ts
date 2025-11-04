@@ -303,6 +303,8 @@ export class NotificationMonitor {
       const simulator: Simulator = {
         id: simulatorId,
         name: `Simulator ${simulatorId}`,
+        plant_name: `Plant ${simulatorId}`,
+        tariff_type: "Medium",
         target_kwh: 100, // Default value
         whatsapp_number: null
       };

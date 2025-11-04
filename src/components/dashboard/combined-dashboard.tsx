@@ -12,10 +12,11 @@ import { AutoRunPanel } from "../common/auto-run-panel";
 import { ManualRunPanel } from "../common/manual-run-panel";
 import { useBlockHistory, useLatestBlock } from "@/lib/hooks";
 import { useAutoEmitter, useManualEmitter } from "@/lib/emitter";
-import type { HistoryBlock, LatestBlock, TickIn } from "@/lib/types";
+import type { HistoryBlock, LatestBlock, TickIn, Simulator } from "@/lib/types";
 import { Select } from "@/components/ui/input";
 import { Input } from "@/components/ui/input";
 import { NotificationManager } from "@/components/notifications";
+import { MaximumDemandPanel } from "./maximum-demand-panel";
 import { 
   ChartBarIcon, 
   BellIcon 
@@ -31,6 +32,7 @@ const timezoneLabel = process.env.NEXT_PUBLIC_TIMEZONE_LABEL ?? "Asia/Kuala_Lump
 type CombinedDashboardProps = {
   simulatorId: string;
   simulatorName: string;
+  simulator?: Simulator;
   targetKwh?: number;
   initialBlock: LatestBlock | null;
   initialHistory: HistoryBlock[];
@@ -39,6 +41,7 @@ type CombinedDashboardProps = {
 export function CombinedDashboard({
   simulatorId,
   simulatorName,
+  simulator,
   targetKwh,
   initialBlock,
   initialHistory
@@ -261,6 +264,15 @@ export function CombinedDashboard({
           <BlockHistoryTiles history={history} loading={historyLoading} />
         </div>
       </div>
+
+      {/* Maximum Demand Charge Panel */}
+      {simulator?.plant_name && simulator?.tariff_type && (
+        <MaximumDemandPanel
+          historyBlocks={history}
+          tariffType={simulator.tariff_type}
+          plantName={simulator.plant_name}
+        />
+      )}
 
 
 

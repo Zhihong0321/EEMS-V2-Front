@@ -1,6 +1,10 @@
+export type TariffType = "Medium" | "Medium ToU" | "High";
+
 export type Simulator = {
   id: string;
   name: string;
+  plant_name: string;
+  tariff_type: TariffType;
   target_kwh: number;
   whatsapp_number?: number | null;
   created_at?: string;
@@ -19,6 +23,8 @@ export type SimulatorListResponse = Simulator[] | { data: Simulator[] };
 // }
 export type CreateSimulatorInput = {
   name: string;
+  plant_name: string;
+  tariff_type: TariffType;
   target_kwh: number;
   whatsapp_number?: number | null;
 };
@@ -149,3 +155,17 @@ export type NotificationStorageKeys = {
 export type CreateNotificationTriggerInput = Omit<NotificationTrigger, 'id' | 'createdAt' | 'updatedAt'>;
 
 export type UpdateNotificationTriggerInput = Partial<Omit<NotificationTrigger, 'id' | 'createdAt' | 'updatedAt'>>;
+
+// Maximum Demand Charge Calculation Types
+export const TARIFF_RATES: Record<TariffType, number> = {
+  "Medium": 89.27,      // RM/kW
+  "Medium ToU": 97.06,  // RM/kW  
+  "High": 31.21         // RM/kW
+};
+
+export type MaximumDemandData = {
+  monthlyHighestKw: number;
+  tariffRate: number;
+  totalDemandCharge: number;
+  peakHourBlocks: HistoryBlock[];
+};

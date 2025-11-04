@@ -8,7 +8,7 @@ import { useSimulators } from "@/lib/hooks";
 import type { Simulator, ApiErrorPayload } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input, InputWrapper } from "@/components/ui/input";
+import { Input, InputWrapper, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DocumentTextIcon } from "@heroicons/react/24/outline";
@@ -27,6 +27,8 @@ type SimulatorsPageProps = {
 
 type FormState = {
   name: string;
+  plantName: string;
+  tariffType: "Medium" | "Medium ToU" | "High";
   target: number;
   whatsapp: string;
 };
@@ -35,7 +37,7 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
   const { push } = useToast();
   const { simulators, loading, refresh, create, delete: deleteSimulator } = useSimulators(initialSimulators);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [form, setForm] = useState<FormState>({ name: "", target: 500, whatsapp: "" });
+  const [form, setForm] = useState<FormState>({ name: "", plantName: "", tariffType: "Medium", target: 500, whatsapp: "" });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -60,6 +62,10 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
       setFormError("Name is required");
       return;
     }
+    if (!form.plantName.trim()) {
+      setFormError("Plant name is required");
+      return;
+    }
     if (form.target <= 0) {
       setFormError("Target kWh must be greater than zero");
       return;
@@ -78,10 +84,12 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
     try {
       await create({
         name: form.name.trim(),
+        plant_name: form.plantName.trim(),
+        tariff_type: form.tariffType,
         target_kwh: form.target,
         ...(whatsappNumber !== undefined ? { whatsapp_number: whatsappNumber } : {})
       });
-      setForm({ name: "", target: 500, whatsapp: "" });
+      setForm({ name: "", plantName: "", tariffType: "Medium", target: 500, whatsapp: "" });
       setIsDialogOpen(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to create simulator";
@@ -150,6 +158,14 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
                       <Badge variant={badgeVariant}>{percentLabel}</Badge>
                     </div>
                     <dl className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="space-y-1">
+                        <dt className="text-xs uppercase tracking-widest text-slate-500">Plant Name</dt>
+                        <dd className="text-base font-medium text-slate-100">{sim.plant_name || "—"}</dd>
+                      </div>
+                      <div className="space-y-1">
+                        <dt className="text-xs uppercase tracking-widest text-slate-500">Tariff Type</dt>
+                        <dd className="text-base font-medium text-slate-100">{sim.tariff_type || "—"}</dd>
+                      </div>
                       <div className="space-y-1">
                         <dt className="text-xs uppercase tracking-widest text-slate-500">Target kWh</dt>
                         <dd className="text-base font-medium text-slate-100">{sim.target_kwh.toFixed(1)}</dd>
@@ -235,17 +251,25 @@ type CreateSimulatorDialogProps = {
 };
 
 function CreateSimulatorDialog({ open, onClose, form, onFormChange, onSubmit, submitting, error }: CreateSimulatorDialogProps) {
-  const updateField = (field: keyof FormState) => (event: ChangeEvent<HTMLInputElement>) => {
+  const updateField = (field: keyof FormState) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (field === "target") {
-      onFormChange({ ...form, target: Number(event.target.value) });
+      onFormChange({ ...form, target: Number((event.target as HTMLInputElement).value) });
       return;
     }
     if (field === "whatsapp") {
-      const digitsOnly = event.target.value.replace(/[^0-9]/g, "");
+      const digitsOnly = (event.target as HTMLInputElement).value.replace(/[^0-9]/g, "");
       onFormChange({ ...form, whatsapp: digitsOnly });
       return;
     }
-    onFormChange({ ...form, name: event.target.value });
+    if (field === "tariffType") {
+      onFormChange({ ...form, tariffType: event.target.value as "Medium" | "Medium ToU" | "High" });
+      return;
+    }
+    if (field === "plantName") {
+      onFormChange({ ...form, plantName: (event.target as HTMLInputElement).value });
+      return;
+    }
+    onFormChange({ ...form, name: (event.target as HTMLInputElement).value });
   };
 
   return (
@@ -289,6 +313,29 @@ function CreateSimulatorDialog({ open, onClose, form, onFormChange, onSubmit, su
                       placeholder="Enter simulator name"
                       error={!!error && form.name.trim() === ''}
                     />
+                  </InputWrapper>
+
+                  <InputWrapper label="Plant Name" required error={error && form.plantName.trim() === '' ? 'Plant name is required' : undefined}>
+                    <Input
+                      type="text"
+                      required
+                      value={form.plantName}
+                      onChange={updateField("plantName")}
+                      placeholder="Enter plant name"
+                      error={!!error && form.plantName.trim() === ''}
+                    />
+                  </InputWrapper>
+
+                  <InputWrapper label="Tariff Type" required>
+                    <Select
+                      value={form.tariffType}
+                      onChange={updateField("tariffType")}
+                      required
+                    >
+                      <option value="Medium">Medium Voltage (RM89.27/kW)</option>
+                      <option value="Medium ToU">Medium Voltage ToU (RM97.06/kW)</option>
+                      <option value="High">High Voltage (RM31.21/kW)</option>
+                    </Select>
                   </InputWrapper>
                   
                   <InputWrapper label="Target kWh" required>

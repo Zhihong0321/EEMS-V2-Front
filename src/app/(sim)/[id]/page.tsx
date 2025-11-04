@@ -1,6 +1,6 @@
 import { CombinedDashboard } from "@/components/dashboard/combined-dashboard";
 import { fetchBlockHistory, fetchLatestBlock, getSimulators } from "@/lib/api";
-import type { HistoryBlock, LatestBlock } from "@/lib/types";
+import type { HistoryBlock, LatestBlock, Simulator } from "@/lib/types";
 
 export default async function DashboardPage({
   params
@@ -8,6 +8,7 @@ export default async function DashboardPage({
   params: { id: string };
 }) {
   const simulatorId = params.id;
+  let simulator: Simulator | undefined;
   let simulatorName = `Simulator ${simulatorId}`;
   let targetKwh: number | undefined;
   let initialBlock: LatestBlock | null = null;
@@ -15,7 +16,7 @@ export default async function DashboardPage({
 
   try {
     const simulators = await getSimulators();
-    const simulator = simulators.find((item) => item.id === simulatorId);
+    simulator = simulators.find((item) => item.id === simulatorId);
     if (simulator) {
       simulatorName = simulator.name;
       targetKwh = simulator.target_kwh;
@@ -41,6 +42,7 @@ export default async function DashboardPage({
     <CombinedDashboard
       simulatorId={simulatorId}
       simulatorName={simulatorName}
+      simulator={simulator}
       targetKwh={targetKwh}
       initialBlock={initialBlock}
       initialHistory={initialHistory}

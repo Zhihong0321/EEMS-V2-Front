@@ -137,10 +137,12 @@ export class NotificationManager {
 
   // Fixed threshold monitoring with proper per-trigger cooldown logic
   async checkThresholds(simulatorId: string, currentPercentage: number): Promise<void> {
+    console.log(`🔔 [THRESHOLD] Checking ${simulatorId} at ${currentPercentage}%`);
     debug.log(`[NotificationManager] Checking ${simulatorId} at ${currentPercentage}%`);
     
     // Get active triggers
     const activeTriggers = await this.getActiveTriggersBySimulator(simulatorId);
+    console.log(`🔔 [THRESHOLD] Found ${activeTriggers.length} active triggers for ${simulatorId}`);
     debug.log(`[NotificationManager] Found ${activeTriggers.length} active triggers`);
     
     // Check each trigger with proper cooldown logic
