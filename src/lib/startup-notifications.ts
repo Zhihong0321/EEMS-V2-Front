@@ -32,48 +32,45 @@ export async function sendStartupNotifications(
     const storage = new LocalStorageNotificationStorage();
     
     for (const phoneNumber of uniquePhoneNumbers) {
+      const triggersForPhone = activeTriggers.filter(t => t.phoneNumber === phoneNumber);
+      let result: { success: boolean; error?: string } = { success: false, error: 'Unknown error' };
+      
       try {
         console.log(`🚀 [STARTUP] Sending to ${phoneNumber}...`);
         
         // Send WhatsApp message
-        const result = await sendWhatsAppMessage({
+        result = await sendWhatsAppMessage({
           to: phoneNumber,
           message: message
         });
-        
-        // Create history entry for each trigger with this phone number
-        const triggersForPhone = activeTriggers.filter(t => t.phoneNumber === phoneNumber);
-        
-        for (const trigger of triggersForPhone) {
-          const historyEntry = createNotificationHistory(
-            trigger,
-            0, // percentage (startup event)
-            result.success,
-            result.success ? undefined : (result.error || 'Failed to send startup notification'),
-            'startup' // Add startup type
-          );
-          
-          await storage.saveNotificationHistory(historyEntry);
-        }
         
         console.log(`🚀 [STARTUP] ${result.success ? '✅ Sent' : '❌ Failed'} to ${phoneNumber}`);
         
       } catch (error) {
         console.error(`🚀 [STARTUP] Error sending to ${phoneNumber}:`, error);
-        
-        // Still log failed attempts to history
-        const triggersForPhone = activeTriggers.filter(t => t.phoneNumber === phoneNumber);
+        result = {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error during startup notification'
+        };
+      }
+      
+      // ALWAYS log to history, regardless of success or failure
+      try {
         for (const trigger of triggersForPhone) {
           const historyEntry = createNotificationHistory(
             trigger,
-            0,
-            false,
-            error instanceof Error ? error.message : 'Unknown error during startup notification',
-            'startup'
+            0, // percentage (startup event)
+            result.success,
+            result.success ? undefined : result.error,
+            'startup' // Add startup type
           );
           
           await storage.saveNotificationHistory(historyEntry);
         }
+        console.log(`🚀 [STARTUP] History logged for ${triggersForPhone.length} triggers`);
+      } catch (historyError) {
+        console.error(`🚀 [STARTUP] Failed to log history for ${phoneNumber}:`, historyError);
+        // Continue processing other phone numbers even if history logging fails
       }
     }
     

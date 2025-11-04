@@ -20,7 +20,7 @@ export default function RootLayout({
 }) {
   // Deployment Validator - UPDATE THIS WITH EACH COMMIT
   const DEPLOYMENT_INFO = {
-    commitTitle: "Clean up debugging UI elements", // UPDATE THIS WITH EACH COMMIT
+    commitTitle: "Add startup notifications for manual mode", // UPDATE THIS WITH EACH COMMIT
     buildTime: process.env.BUILD_TIME || new Date().toISOString(),
     buildId: process.env.BUILD_ID || "dev",
     uniqueId: Math.random().toString(36).substr(2, 9) // Force cache bust
@@ -41,6 +41,10 @@ export default function RootLayout({
                   <span>Prototype build — App Router</span>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center gap-2 text-xs">
+                  <span className="text-slate-400">
+                    Latest: {DEPLOYMENT_INFO.commitTitle}
+                  </span>
+                  <span className="hidden sm:inline text-slate-600">•</span>
                   <span className="text-slate-500">
                     Build: {DEPLOYMENT_INFO.buildTime.slice(0, 16)}
                   </span>

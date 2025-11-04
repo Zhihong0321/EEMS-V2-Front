@@ -146,17 +146,15 @@ function useEmitter({ simulatorId, simulatorName, intervalMs, mode, getTick, fas
       return;
     }
 
-    // Send startup notifications for Auto Run mode
-    if (mode === "auto") {
-      try {
-        debug.log(`[EMITTER] Auto run startup detected for ${simulatorId}`);
-        await debugStartupNotifications(simulatorId);
-        await sendStartupNotifications(simulatorId, mode, simulatorName);
-        debug.log(`[EMITTER] Startup notifications completed`);
-      } catch (error) {
-        debug.error(`[EMITTER] Failed to send startup notifications:`, error);
-        // Don't block simulator start if notifications fail
-      }
+    // Send startup notifications for both Auto and Manual Run modes
+    try {
+      debug.log(`[EMITTER] ${mode} run startup detected for ${simulatorId}`);
+      await debugStartupNotifications(simulatorId);
+      await sendStartupNotifications(simulatorId, mode, simulatorName);
+      debug.log(`[EMITTER] Startup notifications completed`);
+    } catch (error) {
+      debug.error(`[EMITTER] Failed to send startup notifications:`, error);
+      // Don't block simulator start if notifications fail
     }
 
     // Delete future readings from backend when simulator starts
