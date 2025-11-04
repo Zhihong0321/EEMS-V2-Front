@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createSimulator, deleteSimulator, fetchBlockHistory, fetchLatestBlock, getSimulators, simulatorEndpoint } from "./api";
+import { createSimulator, updateSimulator, deleteSimulator, fetchBlockHistory, fetchLatestBlock, getSimulators, simulatorEndpoint } from "./api";
 import type { CreateSimulatorInput, HistoryBlock, LatestBlock, Simulator, SseEvent } from "./types";
 import { useToast } from "@/components/ui/toast-provider";
 import { notificationManager } from "./notification-manager";
@@ -124,6 +124,32 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
     [push, refresh]
   );
 
+  const update = useCallback(
+    async (id: string, input: Partial<CreateSimulatorInput>) => {
+      try {
+        const updatedSimulator = await updateSimulator(id, input);
+        // Update the local state immediately
+        setSimulators((prev) => prev.map((sim) => sim.id === id ? updatedSimulator : sim));
+        void refresh(); // Also refresh from server
+        push({
+          title: "Simulator updated",
+          description: `${updatedSimulator.name} has been updated successfully.`,
+          variant: "success"
+        });
+        return updatedSimulator;
+      } catch (error) {
+        console.error("Update simulator failed", error);
+        push({
+          title: "Update failed",
+          description: error instanceof Error ? error.message : "Failed to update simulator",
+          variant: "error"
+        });
+        throw error;
+      }
+    },
+    [push, refresh]
+  );
+
   const del = useCallback(
     async (id: string) => {
       try {
@@ -176,8 +202,8 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
   );
 
   return useMemo(
-    () => ({ simulators, loading, error, refresh, create, delete: del }),
-    [simulators, loading, error, refresh, create, del]
+    () => ({ simulators, loading, error, refresh, create, update, delete: del }),
+    [simulators, loading, error, refresh, create, update, del]
   );
 }
 

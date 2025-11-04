@@ -211,6 +211,23 @@ export async function createSimulator(input: CreateSimulatorInput): Promise<Simu
   return response;
 }
 
+export async function updateSimulator(id: string, input: Partial<CreateSimulatorInput>): Promise<Simulator> {
+  const response = await requestJson<Simulator | { data: Simulator }>(
+    `/api/v1/simulators/${id}`,
+    withWriteHeaders({
+      method: "PUT",
+      body: JSON.stringify(input)
+    }),
+    { retryDelays: [500, 1500, 3500] }
+  );
+
+  if ("data" in response) {
+    return response.data;
+  }
+
+  return response;
+}
+
 export async function deleteSimulator(id: string): Promise<void> {
   console.log("deleteSimulator called with id:", id);
   try {

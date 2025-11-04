@@ -35,7 +35,7 @@ type FormState = {
 
 export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
   const { push } = useToast();
-  const { simulators, loading, refresh, create, delete: deleteSimulator } = useSimulators(initialSimulators);
+  const { simulators, loading, refresh, create, update, delete: deleteSimulator } = useSimulators(initialSimulators);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>({ name: "", plantName: "", tariffType: "Medium", target: 500, whatsapp: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -43,6 +43,9 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingSimulator, setEditingSimulator] = useState<Simulator | null>(null);
+  const [editForm, setEditForm] = useState<FormState>({ name: "", plantName: "", tariffType: "Medium", target: 500, whatsapp: "" });
 
   const hasSimulators = simulators.length > 0;
 
@@ -93,6 +96,64 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
       setIsDialogOpen(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to create simulator";
+      setFormError(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (simulator: Simulator) => {
+    setEditingSimulator(simulator);
+    setEditForm({
+      name: simulator.name,
+      plantName: simulator.plant_name || "",
+      tariffType: simulator.tariff_type || "Medium",
+      target: simulator.target_kwh,
+      whatsapp: simulator.whatsapp_number?.toString() || ""
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingSimulator) return;
+
+    if (!editForm.name.trim()) {
+      setFormError("Name is required");
+      return;
+    }
+    if (!editForm.plantName.trim()) {
+      setFormError("Plant name is required");
+      return;
+    }
+    if (editForm.target <= 0) {
+      setFormError("Target kWh must be greater than zero");
+      return;
+    }
+
+    const trimmedWhatsApp = editForm.whatsapp.trim();
+    const whatsappNumber =
+      trimmedWhatsApp.length > 0 ? Number.parseInt(trimmedWhatsApp, 10) : undefined;
+
+    if (trimmedWhatsApp.length > 0 && Number.isNaN(whatsappNumber)) {
+      setFormError("WhatsApp number must contain digits only");
+      return;
+    }
+
+    setFormError(null);
+    setSubmitting(true);
+    try {
+      await update(editingSimulator.id, {
+        name: editForm.name.trim(),
+        plant_name: editForm.plantName.trim(),
+        tariff_type: editForm.tariffType,
+        target_kwh: editForm.target,
+        ...(whatsappNumber !== undefined ? { whatsapp_number: whatsappNumber } : {})
+      });
+      setIsEditDialogOpen(false);
+      setEditingSimulator(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update simulator";
       setFormError(message);
     } finally {
       setSubmitting(false);
@@ -183,6 +244,14 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
                       </Button>
                     </Link>
                     <Button
+                      variant="secondary"
+                      size="md"
+                      onClick={() => handleEdit(sim)}
+                      className="text-slate-300 hover:text-white"
+                    >
+                      Edit
+                    </Button>
+                    <Button
                       variant="ghost"
                       size="md"
                       onClick={() => {
@@ -226,6 +295,24 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
         submitting={submitting}
         error={formError}
       />
+      
+      <EditSimulatorDialog
+        open={isEditDialogOpen}
+        onClose={() => {
+          if (!submitting) {
+            setIsEditDialogOpen(false);
+            setFormError(null);
+            setEditingSimulator(null);
+          }
+        }}
+        form={editForm}
+        onFormChange={setEditForm}
+        onSubmit={handleEditSubmit}
+        submitting={submitting}
+        error={formError}
+        simulator={editingSimulator}
+      />
+      
       <DeleteConfirmationDialog
         open={isDeleteDialogOpen}
         onClose={() => {
@@ -385,6 +472,166 @@ function CreateSimulatorDialog({ open, onClose, form, onFormChange, onSubmit, su
                       className="w-full sm:w-auto"
                     >
                       {submitting ? "Creating…" : "Create"}
+                    </Button>
+                  </div>
+                </form>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
+        </div>
+      </Dialog>
+    </Transition>
+  );
+}
+
+type EditSimulatorDialogProps = {
+  open: boolean;
+  onClose: () => void;
+  form: FormState;
+  onFormChange: (state: FormState) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  submitting: boolean;
+  error: string | null;
+  simulator: Simulator | null;
+};
+
+function EditSimulatorDialog({ open, onClose, form, onFormChange, onSubmit, submitting, error, simulator }: EditSimulatorDialogProps) {
+  const updateField = (field: keyof FormState) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    if (field === "target") {
+      onFormChange({ ...form, target: Number((event.target as HTMLInputElement).value) });
+      return;
+    }
+    if (field === "whatsapp") {
+      const digitsOnly = (event.target as HTMLInputElement).value.replace(/[^0-9]/g, "");
+      onFormChange({ ...form, whatsapp: digitsOnly });
+      return;
+    }
+    if (field === "tariffType") {
+      onFormChange({ ...form, tariffType: event.target.value as "Medium" | "Medium ToU" | "High" });
+      return;
+    }
+    if (field === "plantName") {
+      onFormChange({ ...form, plantName: (event.target as HTMLInputElement).value });
+      return;
+    }
+    onFormChange({ ...form, name: (event.target as HTMLInputElement).value });
+  };
+
+  return (
+    <Transition appear show={open} as={Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={onClose}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-200"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-150"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black/50" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-200"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-150"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-900/95 backdrop-blur-xl p-6 text-left align-middle shadow-2xl ring-1 ring-white/5 transition-all">
+                <Dialog.Title className="text-xl font-semibold text-white tracking-tight">
+                  Edit simulator
+                </Dialog.Title>
+                <p className="mt-2 text-sm text-slate-400 leading-relaxed">
+                  Update the simulator configuration including plant name and tariff type.
+                </p>
+                <form className="mt-6 space-y-4" onSubmit={onSubmit}>
+                  <InputWrapper label="Name" required error={error && form.name.trim() === '' ? 'Name is required' : undefined}>
+                    <Input
+                      type="text"
+                      required
+                      value={form.name}
+                      onChange={updateField("name")}
+                      placeholder="Enter simulator name"
+                      error={!!error && form.name.trim() === ''}
+                    />
+                  </InputWrapper>
+
+                  <InputWrapper label="Plant Name" required error={error && form.plantName.trim() === '' ? 'Plant name is required' : undefined}>
+                    <Input
+                      type="text"
+                      required
+                      value={form.plantName}
+                      onChange={updateField("plantName")}
+                      placeholder="Enter plant name"
+                      error={!!error && form.plantName.trim() === ''}
+                    />
+                  </InputWrapper>
+
+                  <InputWrapper label="Tariff Type" required>
+                    <Select
+                      value={form.tariffType}
+                      onChange={updateField("tariffType")}
+                      required
+                    >
+                      <option value="Medium">Medium Voltage (RM89.27/kW)</option>
+                      <option value="Medium ToU">Medium Voltage ToU (RM97.06/kW)</option>
+                      <option value="High">High Voltage (RM31.21/kW)</option>
+                    </Select>
+                  </InputWrapper>
+                  
+                  <InputWrapper label="Target kWh" required>
+                    <Input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={form.target}
+                      onChange={updateField("target")}
+                      placeholder="e.g. 500"
+                    />
+                  </InputWrapper>
+                  
+                  <InputWrapper 
+                    label="WhatsApp number" 
+                    helperText="Digits only (no plus sign). Optional for alerts."
+                  >
+                    <Input
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="\d*"
+                      value={form.whatsapp}
+                      onChange={updateField("whatsapp")}
+                      placeholder="e.g. 60123456789"
+                    />
+                  </InputWrapper>
+                  
+                  {error && !form.name.trim() === false && <p className="text-xs text-danger">{error}</p>}
+                  
+                  <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="md"
+                      onClick={onClose}
+                      disabled={submitting}
+                      className="w-full sm:w-auto"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="md"
+                      isLoading={submitting}
+                      disabled={submitting}
+                      className="w-full sm:w-auto"
+                    >
+                      {submitting ? "Updating…" : "Update"}
                     </Button>
                   </div>
                 </form>
