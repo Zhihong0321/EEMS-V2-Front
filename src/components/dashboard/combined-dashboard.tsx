@@ -115,6 +115,15 @@ export function CombinedDashboard({
   // Use SSE lastReadingTs (most reliable)
   const effectiveLastReadingTs = sseLastReadingTs ?? lastReadingTs;
 
+  // Debug: Log history blocks when they change
+  useEffect(() => {
+    console.log('📊 Dashboard history blocks:', { 
+      count: history.length, 
+      blocks: history,
+      loading: historyLoading 
+    });
+  }, [history, historyLoading]);
+
   const toggleAuto = () => {
     if (autoEmitter.isRunning) {
       autoEmitter.stop();
@@ -271,13 +280,6 @@ export function CombinedDashboard({
         tariffType={simulator?.tariff_type || "Medium"}
         plantName={simulator?.plant_name || simulatorName}
       />
-      
-      {/* Debug: Log history blocks */}
-      {console.log('📊 Dashboard history blocks:', { 
-        count: history.length, 
-        blocks: history,
-        loading: historyLoading 
-      })}
 
 
 
