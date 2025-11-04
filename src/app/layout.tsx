@@ -20,7 +20,7 @@ export default function RootLayout({
 }) {
   // Deployment Validator - UPDATE THIS WITH EACH COMMIT
   const DEPLOYMENT_INFO = {
-    commitTitle: "Add edit simulator functionality for plant name and tariff", // UPDATE THIS WITH EACH COMMIT
+    commitTitle: "Add backend API request doc for update simulator endpoint", // UPDATE THIS WITH EACH COMMIT
     buildTime: process.env.BUILD_TIME || new Date().toISOString(),
     buildId: process.env.BUILD_ID || "dev",
     uniqueId: Math.random().toString(36).substr(2, 9) // Force cache bust
