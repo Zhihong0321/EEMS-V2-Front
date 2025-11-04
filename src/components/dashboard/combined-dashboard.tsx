@@ -266,13 +266,11 @@ export function CombinedDashboard({
       </div>
 
       {/* Maximum Demand Charge Panel */}
-      {simulator?.plant_name && simulator?.tariff_type && (
-        <MaximumDemandPanel
-          historyBlocks={history}
-          tariffType={simulator.tariff_type}
-          plantName={simulator.plant_name}
-        />
-      )}
+      <MaximumDemandPanel
+        historyBlocks={history}
+        tariffType={simulator?.tariff_type || "Medium"}
+        plantName={simulator?.plant_name || simulatorName}
+      />
 
 
 
