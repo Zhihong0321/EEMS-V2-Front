@@ -16,7 +16,8 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
-  YAxis
+  YAxis,
+  LabelList
 } from "recharts";
 import type { LatestBlock } from "@/lib/types";
 import { formatBlockWindow } from "@/lib/block-utils";
@@ -197,6 +198,25 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
 
   const isAccumulate = mode === "accumulate";
 
+  // Mobile detection hook
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640); // sm breakpoint
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Find highest value for mobile label (only for non-accumulate mode)
+  const highestPoint = !isAccumulate ? chartData.reduce((max, point) => 
+    point.value > max.value ? point : max, 
+    { value: 0, ts: 0 }
+  ) : null;
+
   // Track previous data to detect new bars for animation
   const prevDataRef = useRef<ChartPoint[]>([]);
   const [barColors, setBarColors] = useState<Map<number, string>>(new Map());
@@ -310,31 +330,6 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
 
   // For non-accumulate mode, use BarChart with color-coded bars and animations
   const ChartComponent = isAccumulate ? LineChart : BarChart;
-  const DataElement = isAccumulate ? (
-    <Line type="monotone" dataKey="value" stroke="#22d3ee" strokeWidth={2} dot={false} isAnimationActive={true} animationDuration={800} />
-  ) : (
-    <Bar 
-      dataKey="value" 
-      radius={[4, 4, 0, 0]} 
-      isAnimationActive={true}
-      animationDuration={1500}
-      animationBegin={0}
-    >
-      {animatedData.map((entry, index) => {
-        const currentColor = barColors.get(index) || entry.color || "#22c55e";
-        
-        return (
-          <Cell 
-            key={`cell-${entry.ts}-${index}`} 
-            fill={currentColor}
-            style={{
-              transition: "fill 1.2s cubic-bezier(0.4, 0, 0.2, 1)"
-            }}
-          />
-        );
-      })}
-    </Bar>
-  );
 
   // Reference lines
   const referenceLine = isAccumulate ? (
@@ -397,7 +392,7 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
             <ChartComponent 
               key={isAccumulate ? undefined : `chart-${animationKey}`}
               data={isAccumulate ? chartData : animatedData} 
-              margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
+              margin={isMobile ? { left: 4, right: 4, top: 20, bottom: 12 } : { left: 12, right: 12, top: 12, bottom: 12 }}
             >
               <CartesianGrid strokeDasharray="4 4" stroke="#1f2937" />
               <XAxis
@@ -407,17 +402,58 @@ export function CurrentBlockChart({ block, loading, targetKwh, targetPeakKwh, mo
                 tickFormatter={(ts) => windowFormatter.format(ts)}
                 stroke="#64748b"
                 tickLine={false}
+                fontSize={isMobile ? 10 : 12}
               />
-              <YAxis
-                dataKey="value"
-                stroke="#64748b"
-                tickLine={false}
-                width={60}
-                tickFormatter={(value) => tooltipFormatter.format(value as number)}
-              />
+              {/* Hide Y-axis on mobile to save space */}
+              {!isMobile && (
+                <YAxis
+                  dataKey="value"
+                  stroke="#64748b"
+                  tickLine={false}
+                  width={60}
+                  tickFormatter={(value) => tooltipFormatter.format(value as number)}
+                />
+              )}
               <Tooltip content={<CustomTooltip target={resolvedTarget} targetPeakKwh={targetPeakKwh} mode={mode} binSeconds={binSeconds} />} />
               {referenceLine}
-              {DataElement}
+              {isAccumulate ? (
+                <Line type="monotone" dataKey="value" stroke="#22d3ee" strokeWidth={2} dot={false} isAnimationActive={true} animationDuration={800} />
+              ) : (
+                <Bar 
+                  dataKey="value" 
+                  radius={[4, 4, 0, 0]} 
+                  isAnimationActive={true}
+                  animationDuration={1500}
+                  animationBegin={0}
+                >
+                  {/* Mobile: Show label only on highest bar */}
+                  {isMobile && highestPoint && highestPoint.value > 0 && (
+                    <LabelList 
+                      dataKey="value" 
+                      position="top" 
+                      fontSize={10}
+                      fill="#ffffff"
+                      formatter={(value: number, index: number) => {
+                        const point = animatedData[index];
+                        return point && point.value === highestPoint.value ? tooltipFormatter.format(value) : '';
+                      }}
+                    />
+                  )}
+                  {animatedData.map((entry, index) => {
+                    const currentColor = barColors.get(index) || entry.color || "#22c55e";
+                    
+                    return (
+                      <Cell 
+                        key={`cell-${entry.ts}-${index}`} 
+                        fill={currentColor}
+                        style={{
+                          transition: "fill 1.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                        }}
+                      />
+                    );
+                  })}
+                </Bar>
+              )}
             </ChartComponent>
           </ResponsiveContainer>
         )}

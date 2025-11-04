@@ -135,7 +135,7 @@ export class NotificationManager {
     return triggers.filter(t => t.isActive);
   }
 
-  // SIMPLE threshold monitoring - no complex logic
+  // Fixed threshold monitoring with proper per-trigger cooldown logic
   async checkThresholds(simulatorId: string, currentPercentage: number): Promise<void> {
     debug.log(`[NotificationManager] Checking ${simulatorId} at ${currentPercentage}%`);
     
@@ -143,17 +143,55 @@ export class NotificationManager {
     const activeTriggers = await this.getActiveTriggersBySimulator(simulatorId);
     debug.log(`[NotificationManager] Found ${activeTriggers.length} active triggers`);
     
-    // Check each trigger - SIMPLE LOGIC ONLY
+    // Check each trigger with proper cooldown logic
     for (const trigger of activeTriggers) {
       if (currentPercentage >= trigger.thresholdPercentage) {
-        debug.log(`[NotificationManager] Trigger fired for ${trigger.phoneNumber}`);
+        debug.log(`[NotificationManager] Threshold exceeded for trigger ${trigger.id} (${trigger.phoneNumber})`);
         
-        // SIMPLE: Just send the notification, no complex checks
+        // Check if we've sent a notification for this specific trigger in the last minute
+        const lastNotificationTime = await this.storage.getLastNotificationTime(trigger.id);
+        const now = new Date();
+        const oneMinuteAgo = new Date(now.getTime() - 60 * 1000); // 1 minute ago
+        
+        if (lastNotificationTime && lastNotificationTime > oneMinuteAgo) {
+          debug.log(`[NotificationManager] Trigger ${trigger.id} is in cooldown (last sent: ${lastNotificationTime.toISOString()})`);
+          continue; // Skip this trigger, it's in cooldown
+        }
+        
+        // Send notification and log to history
         try {
           const success = await this.sendNotification(trigger, currentPercentage);
-          debug.log(`[NotificationManager] Notification ${success ? 'sent' : 'failed'}`);
+          
+          // ALWAYS log to history, regardless of success/failure
+          const historyEntry = createNotificationHistory(
+            trigger,
+            currentPercentage,
+            success,
+            success ? undefined : 'Failed to send notification',
+            'threshold'
+          );
+          await this.storage.saveNotificationHistory(historyEntry);
+          
+          // Update last notification time for this specific trigger (only if successful)
+          if (success) {
+            await this.storage.setLastNotificationTime(trigger.id, now);
+            debug.log(`[NotificationManager] Notification sent and cooldown set for trigger ${trigger.id}`);
+          } else {
+            debug.log(`[NotificationManager] Notification failed for trigger ${trigger.id}, no cooldown set`);
+          }
+          
         } catch (error) {
-          debug.error(`[NotificationManager] Notification error:`, error);
+          debug.error(`[NotificationManager] Notification error for trigger ${trigger.id}:`, error);
+          
+          // Still log failed attempts to history
+          const historyEntry = createNotificationHistory(
+            trigger,
+            currentPercentage,
+            false,
+            error instanceof Error ? error.message : 'Unknown error',
+            'threshold'
+          );
+          await this.storage.saveNotificationHistory(historyEntry);
         }
       }
     }
@@ -192,14 +230,14 @@ export class NotificationManager {
         );
       }
 
+      debug.log(`[NotificationManager] Successfully sent notification to ${trigger.phoneNumber}`);
       return true;
     } catch (error) {
       const handled = notificationErrorHandler.handleError(error as Error, 'sendNotification');
       debug.error(`[NotificationManager] Failed to send notification to ${trigger.phoneNumber}:`, handled.message);
       
-      // Store the specific error for history logging
-      (error as any).detailedMessage = handled.message;
-      throw error; // Re-throw so processTrigger can log the detailed error
+      // Re-throw with enhanced error message
+      throw new Error(handled.message);
     }
   }
 
@@ -430,10 +468,46 @@ if (typeof window !== 'undefined') {
       const activeTriggers = await notificationManager.getActiveTriggersBySimulator(simulatorId);
       console.log(`🔍 [TEST] All triggers:`, allTriggers);
       console.log(`🔍 [TEST] Active triggers:`, activeTriggers);
+      
+      // Check cooldown status for each trigger
+      const storage = new LocalStorageNotificationStorage();
+      for (const trigger of activeTriggers) {
+        const lastNotificationTime = await storage.getLastNotificationTime(trigger.id);
+        const now = new Date();
+        const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+        const inCooldown = lastNotificationTime && lastNotificationTime > oneMinuteAgo;
+        
+        console.log(`🔍 [TEST] Trigger ${trigger.id} (${trigger.phoneNumber}):`, {
+          threshold: trigger.thresholdPercentage,
+          lastNotification: lastNotificationTime?.toISOString() || 'Never',
+          inCooldown: inCooldown,
+          cooldownRemaining: inCooldown ? Math.ceil((lastNotificationTime!.getTime() + 60000 - now.getTime()) / 1000) + 's' : 'None'
+        });
+      }
+      
       return { allTriggers, activeTriggers };
     } catch (error) {
       console.error(`🔍 [TEST] Check triggers failed:`, error);
       return null;
+    }
+  };
+
+  // Test cooldown reset
+  (window as any).resetCooldowns = async (simulatorId: string) => {
+    console.log(`🔄 [TEST] Resetting cooldowns for ${simulatorId}...`);
+    try {
+      const triggers = await notificationManager.getTriggersBySimulator(simulatorId);
+      const storage = new LocalStorageNotificationStorage();
+      for (const trigger of triggers) {
+        // Set last notification time to 2 minutes ago to clear cooldown
+        const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+        await storage.setLastNotificationTime(trigger.id, twoMinutesAgo);
+      }
+      console.log(`🔄 [TEST] Cooldowns reset for ${triggers.length} triggers`);
+      return true;
+    } catch (error) {
+      console.error(`🔄 [TEST] Reset cooldowns failed:`, error);
+      return false;
     }
   };
   
@@ -442,5 +516,6 @@ if (typeof window !== 'undefined') {
   console.log('  testTrigger(simulatorId, percentage) - Test threshold trigger');
   console.log('  testStartupNotifications(simulatorId, simulatorName?) - Test startup notification system');
   console.log('  debugStartupNotifications(simulatorId) - Debug startup notification issues');
-  console.log('  checkTriggers(simulatorId) - Check triggers for a simulator');
+  console.log('  checkTriggers(simulatorId) - Check triggers and cooldown status');
+  console.log('  resetCooldowns(simulatorId) - Reset all cooldowns for testing');
 }

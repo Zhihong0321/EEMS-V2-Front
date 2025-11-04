@@ -162,13 +162,8 @@ export function SimulatorsPage({ initialSimulators }: SimulatorsPageProps) {
                   </div>
                   <div className="mt-6 flex flex-col sm:flex-row gap-2">
                     <Link href={`/${sim.id}`} className="flex-1">
-                      <Button variant="secondary" size="md" className="w-full">
-                        Dashboard
-                      </Button>
-                    </Link>
-                    <Link href={`/${sim.id}/run`} className="flex-1">
                       <Button variant="primary" size="md" className="w-full">
-                        Run
+                        Open Dashboard
                       </Button>
                     </Link>
                     <Button

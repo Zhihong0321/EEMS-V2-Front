@@ -210,6 +210,8 @@ export function CombinedDashboard({
             <option value="accumulate">Accumulate</option>
             <option value="non-accumulate">Non-Accumulate (Peak Usage)</option>
           </Select>
+          
+          {/* Target Accumulated input - ONLY visible in Non-Accumulate mode */}
           {chartMode === "non-accumulate" && (
             <>
               <label htmlFor="target-peak-kwh" className="text-sm font-medium text-slate-300 sm:ml-4">Target Accumulated (kWh):</label>
