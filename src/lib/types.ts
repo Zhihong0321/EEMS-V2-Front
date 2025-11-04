@@ -169,3 +169,35 @@ export type MaximumDemandData = {
   totalDemandCharge: number;
   peakHourBlocks: HistoryBlock[];
 };
+
+// TNB Bill API Types
+export type TnbTariffRecord = {
+  id: number;
+  bubble_id: string;
+  last_synced_at?: string;
+  created_at?: string;
+  updated_at?: string;
+  created_date?: string;
+  usage_kwh: number;
+  eei: number;
+  network: number;
+  kwtbb_normal?: number;
+  retail?: number;
+  modified_date?: string;
+  usage_normal?: number;
+  created_by?: string;
+  bill_total_normal: number;
+  capacity: number;
+  sst_normal?: number;
+};
+
+export type TnbBillCalculationResult = {
+  tariff: TnbTariffRecord;
+  inputAmount: number;
+  message: string;
+};
+
+export type TnbTariffSampleResponse = {
+  data: TnbTariffRecord[];
+  count: number;
+};

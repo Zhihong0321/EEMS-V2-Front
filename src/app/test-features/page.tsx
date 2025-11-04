@@ -5,8 +5,10 @@
 
 import { useState } from "react";
 import { sendWhatsAppMessage, getWhatsAppStatus, getWhatsAppQR } from "@/lib/whatsapp-api";
+import { calculateTnbBill } from "@/lib/api";
 import { useToast } from "@/components/ui/toast-provider";
-import { PaperAirplaneIcon, SignalIcon, QrCodeIcon } from "@heroicons/react/24/outline";
+import { PaperAirplaneIcon, SignalIcon, QrCodeIcon, CurrencyDollarIcon } from "@heroicons/react/24/outline";
+import type { TnbBillCalculationResult } from "@/lib/types";
 
 export default function TestFeaturesPage() {
   const { push } = useToast();
@@ -17,6 +19,12 @@ export default function TestFeaturesPage() {
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [loadingQR, setLoadingQR] = useState(false);
+  
+  // TNB Bill Search state
+  const [billAmount, setBillAmount] = useState("");
+  const [searchingBill, setSearchingBill] = useState(false);
+  const [billResult, setBillResult] = useState<TnbBillCalculationResult | null>(null);
+  const [useDemoMode, setUseDemoMode] = useState(false);
 
   const handleSend = async () => {
     if (!to.trim() || !message.trim()) {
@@ -122,6 +130,51 @@ export default function TestFeaturesPage() {
     }
   };
 
+  const handleSearchBill = async () => {
+    const amount = parseFloat(billAmount);
+    if (!billAmount.trim() || isNaN(amount) || amount <= 0) {
+      push({
+        title: "Validation Error",
+        description: "Please enter a valid bill amount (RM)",
+        variant: "error"
+      });
+      return;
+    }
+
+    setSearchingBill(true);
+    try {
+      let result;
+      if (useDemoMode) {
+        // Use mock data for demo
+        const { calculateTnbBillMock } = await import("@/lib/api");
+        result = calculateTnbBillMock(amount);
+        // Add small delay to simulate API call
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } else {
+        // Try real API
+        result = await calculateTnbBill(amount);
+      }
+      
+      setBillResult(result);
+      push({
+        title: "TNB Bill Found",
+        description: result.message,
+        variant: "success"
+      });
+    } catch (error) {
+      // If real API fails, suggest demo mode
+      const errorMessage = error instanceof Error ? error.message : "Failed to search TNB bill data";
+      push({
+        title: "Search Failed",
+        description: useDemoMode ? errorMessage : `${errorMessage}. Try enabling Demo Mode to test with sample data.`,
+        variant: "error"
+      });
+      setBillResult(null);
+    } finally {
+      setSearchingBill(false);
+    }
+  };
+
 
   return (
     <section className="space-y-8">
@@ -153,6 +206,100 @@ export default function TestFeaturesPage() {
           >
             View Dashboard
           </a>
+        </div>
+      </div>
+
+      {/* TNB Bill Search Section */}
+      <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-6">
+        <header className="mb-6">
+          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+            <CurrencyDollarIcon className="h-6 w-6" />
+            TNB Bill Database Search
+          </h2>
+          <p className="text-sm text-slate-400 mt-1">
+            Search TNB tariff data by monthly bill amount (RM). Finds closest match where bill total ≤ your input.
+          </p>
+        </header>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Monthly Bill Amount (RM)
+              </label>
+              <input
+                type="number"
+                value={billAmount}
+                onChange={(e) => setBillAmount(e.target.value)}
+                placeholder="150"
+                min="1"
+                step="0.01"
+                className="w-full rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:border-purple-400 focus:outline-none"
+                disabled={searchingBill}
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Enter your monthly TNB bill amount in Ringgit Malaysia
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={useDemoMode}
+                  onChange={(e) => setUseDemoMode(e.target.checked)}
+                  className="rounded border-slate-600 bg-slate-800 text-primary focus:ring-primary focus:ring-offset-slate-900"
+                />
+                Demo Mode
+              </label>
+              <span className="text-xs text-slate-500">
+                {useDemoMode ? "Using sample data" : "Using live API"}
+              </span>
+            </div>
+
+            <button
+              onClick={handleSearchBill}
+              disabled={searchingBill || !billAmount.trim()}
+              className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary min-h-[44px]"
+            >
+              {searchingBill ? "Searching..." : `Search TNB Bill Data${useDemoMode ? " (Demo)" : ""}`}
+            </button>
+          </div>
+
+          {billResult && (
+            <div className="rounded-md border border-slate-700 bg-slate-800/50 p-4">
+              <h3 className="text-sm font-semibold text-slate-200 mb-3">Search Result</h3>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Input Amount:</span>
+                  <span className="text-white font-medium">RM {billResult.inputAmount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Matched Bill Total:</span>
+                  <span className="text-white font-medium">RM {billResult.tariff.bill_total_normal}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Usage (kWh):</span>
+                  <span className="text-white font-medium">{billResult.tariff.usage_kwh}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">EEI:</span>
+                  <span className="text-white font-medium">{billResult.tariff.eei}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Network:</span>
+                  <span className="text-white font-medium">RM {billResult.tariff.network}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Capacity:</span>
+                  <span className="text-white font-medium">{billResult.tariff.capacity} kW</span>
+                </div>
+                <div className="mt-3 pt-2 border-t border-slate-600">
+                  <p className="text-slate-300 text-xs">{billResult.message}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -293,7 +440,8 @@ export default function TestFeaturesPage() {
       <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
         <h3 className="text-sm font-semibold text-slate-200 mb-2">API Information</h3>
         <div className="text-xs text-slate-400 space-y-1">
-          <p><strong>Backend API:</strong> {process.env.NEXT_PUBLIC_WHATSAPP_API_URL || "https://whatsapp-api-server-production-c15f.up.railway.app"}</p>
+          <p><strong>WhatsApp API:</strong> {process.env.NEXT_PUBLIC_WHATSAPP_API_URL || "https://whatsapp-api-server-production-c15f.up.railway.app"}</p>
+          <p><strong>TNB API:</strong> https://eternalgy-erp-retry3-production.up.railway.app</p>
           <p><strong>Proxy Endpoints (CORS-free):</strong></p>
           <ul className="list-disc list-inside ml-2 space-y-1">
             <li>POST /api/whatsapp/send - Send WhatsApp message</li>
@@ -302,6 +450,7 @@ export default function TestFeaturesPage() {
           </ul>
           <p className="mt-2"><strong>Phone Format:</strong> Country code + digits only (e.g., 60123456789)</p>
           <p><strong>Rate Limit:</strong> Max 1 message per second</p>
+          <p><strong>TNB Search:</strong> Finds closest tariff where bill_total_normal ≤ input amount</p>
         </div>
       </div>
     </section>

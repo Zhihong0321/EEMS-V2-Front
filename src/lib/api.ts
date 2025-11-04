@@ -333,3 +333,116 @@ export async function getLastReadingTimestamp(simulatorId: string): Promise<stri
     return null;
   }
 }
+
+// TNB Bill API functions
+const TNB_API_BASE = "https://eternalgy-erp-retry3-production.up.railway.app";
+
+/**
+ * Calculate TNB bill breakdown based on monthly bill amount (RM).
+ * Finds the closest matching tariff record where bill_total_normal <= amount.
+ */
+export async function calculateTnbBill(amount: number): Promise<{
+  tariff: any;
+  inputAmount: number;
+  message: string;
+}> {
+  if (amount <= 0) {
+    throw new ApiError("Invalid bill amount provided", 400);
+  }
+
+  const url = `${TNB_API_BASE}/api/calculate-bill?amount=${amount}`;
+  
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new ApiError("TNB API endpoint not available. The backend may not have implemented this feature yet.", 404);
+      }
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        errorData.error || `Request failed with status ${response.status}`,
+        response.status
+      );
+    }
+    return await response.json();
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(`Failed to fetch TNB bill data: ${(error as Error).message}`, 500);
+  }
+}
+
+/**
+ * Get sample TNB tariff data (first 10 rows).
+ */
+export async function getTnbTariffSample(): Promise<{
+  data: any[];
+  count: number;
+}> {
+  const url = `${TNB_API_BASE}/api/tnb-tariff`;
+  
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new ApiError("TNB API endpoint not available. The backend may not have implemented this feature yet.", 404);
+      }
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        errorData.error || `Request failed with status ${response.status}`,
+        response.status
+      );
+    }
+    return await response.json();
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(`Failed to fetch TNB tariff data: ${(error as Error).message}`, 500);
+  }
+}
+
+/**
+ * Mock TNB bill calculation for demo purposes when API is not available.
+ * This provides sample data to demonstrate the functionality.
+ */
+export function calculateTnbBillMock(amount: number): {
+  tariff: any;
+  inputAmount: number;
+  message: string;
+} {
+  // Sample tariff data for demonstration
+  const mockTariffs = [
+    { bill_total_normal: 50, usage_kwh: 150, eei: -45, network: 20, capacity: 8.5 },
+    { bill_total_normal: 100, usage_kwh: 250, eei: -40, network: 35, capacity: 12.0 },
+    { bill_total_normal: 150, usage_kwh: 350, eei: -35, network: 50, capacity: 15.5 },
+    { bill_total_normal: 200, usage_kwh: 450, eei: -30, network: 65, capacity: 18.0 },
+    { bill_total_normal: 300, usage_kwh: 650, eei: -25, network: 95, capacity: 25.0 },
+  ];
+
+  // Find closest match where bill_total_normal <= amount
+  let closestTariff = mockTariffs[0];
+  for (const tariff of mockTariffs) {
+    if (tariff.bill_total_normal <= amount) {
+      closestTariff = tariff;
+    } else {
+      break;
+    }
+  }
+
+  const message = closestTariff.bill_total_normal <= amount 
+    ? "Found closest matching tariff (DEMO DATA)"
+    : "Used lowest available tariff - input amount below all records (DEMO DATA)";
+
+  return {
+    tariff: {
+      id: Math.floor(Math.random() * 1000),
+      bubble_id: `demo-${Date.now()}`,
+      ...closestTariff,
+      created_date: new Date().toISOString(),
+    },
+    inputAmount: amount,
+    message
+  };
+}

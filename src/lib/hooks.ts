@@ -503,3 +503,45 @@ export function useBlockHistory(simulatorId: string | null, limit = 10, initialH
 
   return { history, loading, error, refresh };
 }
+
+// TNB Bill hooks
+export function useTnbBillSearch() {
+  const { push } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const searchBill = useCallback(async (amount: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { calculateTnbBill } = await import('./api');
+      const data = await calculateTnbBill(amount);
+      setResult(data);
+      push({
+        title: "TNB Bill Found",
+        description: data.message,
+        variant: "success"
+      });
+      return data;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to search TNB bill data";
+      setError(message);
+      push({
+        title: "Search Failed",
+        description: message,
+        variant: "error"
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [push]);
+
+  const clearResult = useCallback(() => {
+    setResult(null);
+    setError(null);
+  }, []);
+
+  return { searchBill, loading, result, error, clearResult };
+}
