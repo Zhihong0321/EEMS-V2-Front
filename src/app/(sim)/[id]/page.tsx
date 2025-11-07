@@ -1,4 +1,4 @@
-import { DashboardContent } from "@/components/dashboard/dashboard-content";
+import { CombinedDashboard } from "@/components/dashboard/combined-dashboard";
 import { fetchBlockHistory, fetchLatestBlock, getSimulators } from "@/lib/api";
 import type { HistoryBlock, LatestBlock } from "@/lib/types";
 
@@ -38,7 +38,7 @@ export default async function DashboardPage({
   }
 
   return (
-    <DashboardContent
+    <CombinedDashboard
       simulatorId={simulatorId}
       simulatorName={simulatorName}
       targetKwh={targetKwh}

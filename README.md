@@ -9,6 +9,7 @@
 **Live updates:** Server-Sent Events (SSE) to Backend
 **Deploy:** Railway (Node runtime)
 **Business timezone:** `Asia/Kuala_Lumpur` (for display only; logic is handled by backend)
+**Responsive:** Mobile-friendly using responsive-aware development approach (see `docs/RESPONSIVE.md`)
 
 ---
 
@@ -79,7 +80,7 @@ Now (prototype). Production hardening (auth, roles, caching, MQTT publisher) com
 
   * “Open Dashboard”
   * “Run Simulator”
-* **Create Modal**: fields `name`, `target_kwh`, `whatsapp_msisdn` → `POST /api/v1/simulators`
+* **Create Modal**: fields `name`, `target_kwh`, `whatsapp_number` (digits only) → `POST /api/v1/simulators`
 * Empty-state with CTA to create first simulator.
 
 **Acceptance:**
@@ -189,7 +190,7 @@ export type Simulator = {
   id: string;
   name: string;
   target_kwh: number;
-  whatsapp_msisdn?: string | null;
+  whatsapp_number?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -253,7 +254,7 @@ const WRITE_HEADERS = {
 ```ts
 // Simulators
 GET  `${BASE}/api/v1/simulators`
-POST `${BASE}/api/v1/simulators` body: {name, target_kwh, whatsapp_msisdn}
+POST `${BASE}/api/v1/simulators` body: {name, target_kwh, whatsapp_number // integer}
 
 // Ingest
 POST `${BASE}/api/v1/readings:ingest` body: IngestRequest

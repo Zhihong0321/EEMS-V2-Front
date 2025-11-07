@@ -1,8 +1,12 @@
 "use client";
 
+// RESPONSIVE-AWARE: Uses responsive classes for mobile-friendly layout
+// See docs/RESPONSIVE.md for guidelines
+
 import type { ChangeEvent } from "react";
 import { RocketLaunchIcon, StopIcon } from "@heroicons/react/24/outline";
-import clsx from "clsx";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export type ManualRunPanelProps = {
   sliderValue: number;
@@ -49,10 +53,10 @@ export function ManualRunPanel({
   const formattedLastSent = lastSentAt ? timeFormatter.format(new Date(lastSentAt)) : "—";
 
   return (
-    <article className="flex flex-col gap-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+    <article className="flex flex-col gap-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm p-6 shadow-md hover:shadow-lg transition-shadow duration-300">
       <header className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-white">Manual fast-forward</h2>
+          <h3 className="text-xl font-semibold text-white">Manual fast-forward</h3>
           <p className="text-sm text-slate-400">Emit one tick per second using the selected power multiplier.</p>
         </div>
         <RocketLaunchIcon className="h-8 w-8 text-purple-400" aria-hidden="true" />
@@ -71,17 +75,16 @@ export function ManualRunPanel({
               onChange={handleSliderChange}
               className="w-full"
             />
-            <span className="text-xs text-slate-400">FAST-FORWARD x15 — Multiplier {(sliderValue * 100).toFixed(0)}%</span>
+            <span className="text-xs text-slate-400">FAST-FORWARD x30 — Multiplier {(sliderValue * 100).toFixed(0)}%</span>
           </label>
           <label className="flex flex-col gap-2 text-sm">
             <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Max power (kW)</span>
-            <input
+            <Input
               type="number"
               min={0}
               step={5}
               value={maxKw}
               onChange={handleMaxKwChange}
-              className="w-full rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-white focus:border-purple-400 focus:outline-none"
             />
           </label>
         </div>
@@ -89,22 +92,16 @@ export function ManualRunPanel({
           <p>
             Current output: <span className="font-semibold text-slate-200">{powerKw.toFixed(1)}</span> kW
           </p>
-          <p className="mt-1">Ticks are emitted every <span className="font-semibold text-slate-200">1 second</span> with <span className="font-semibold text-slate-200">sample_seconds=15</span>.</p>
+          <p className="mt-1">Ticks are emitted every <span className="font-semibold text-slate-200">1 second</span> with <span className="font-semibold text-slate-200">sample_seconds=30</span>. Fast-forward mode advances simulated time by 30 seconds per real second.</p>
         </div>
       </div>
 
-      <button
-        type="button"
+      <Button
+        variant={isRunning ? "danger" : "primary"}
+        size="md"
         onClick={isRunning ? onStop : onStart}
         disabled={disabled}
-        className={clsx(
-          "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
-          disabled
-            ? "cursor-not-allowed bg-slate-800/60 text-slate-500"
-            : isRunning
-              ? "bg-danger/80 text-white hover:bg-danger"
-              : "bg-primary text-primary-foreground hover:bg-cyan-600"
-        )}
+        className="w-full"
       >
         {isRunning ? (
           <>
@@ -115,7 +112,7 @@ export function ManualRunPanel({
             <RocketLaunchIcon className="h-4 w-4" aria-hidden="true" /> Start manual run
           </>
         )}
-      </button>
+      </Button>
       {disabled && disabledReason ? <p className="text-xs text-warning">{disabledReason}</p> : null}
 
       <dl className="grid grid-cols-2 gap-4 rounded-lg border border-slate-800 bg-slate-950/60 p-4 text-xs text-slate-400">

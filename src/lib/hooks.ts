@@ -1,9 +1,27 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createSimulator, fetchBlockHistory, fetchLatestBlock, getSimulators, simulatorEndpoint } from "./api";
+import { createSimulator, deleteSimulator, fetchBlockHistory, fetchLatestBlock, getSimulators, simulatorEndpoint } from "./api";
 import type { CreateSimulatorInput, HistoryBlock, LatestBlock, Simulator, SseEvent } from "./types";
 import { useToast } from "@/components/ui/toast-provider";
+import { notificationManager } from "./notification-manager";
+
+console.log('🚀 [HOOKS] Hooks file loaded, notificationManager imported:', !!notificationManager);
+
+// Debug: Check notification system on load
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', async () => {
+    console.log('🔍 [HOOKS] Page loaded, checking notification system...');
+    try {
+      const settings = await notificationManager.getSettings();
+      const allTriggers = await notificationManager.getAllTriggers();
+      console.log('🔍 [HOOKS] Notification settings:', settings);
+      console.log('🔍 [HOOKS] All triggers:', allTriggers);
+    } catch (error) {
+      console.error('🔍 [HOOKS] Error checking notification system:', error);
+    }
+  });
+}
 
 export function useSimulators(initialSimulators: Simulator[] = []) {
   const { push } = useToast();
@@ -36,11 +54,68 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
     }
   }, [initialSimulators.length, refresh]);
 
+  // Auto-refresh on window focus to prevent stale data
+  useEffect(() => {
+    const handleFocus = () => {
+      void refresh();
+    };
+    
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [refresh]);
+
   const create = useCallback(
     async (input: CreateSimulatorInput) => {
       try {
         const simulator = await createSimulator(input);
-        setSimulators((prev) => [simulator, ...prev]);
+        
+        // Send startup notification and log to history
+        try {
+          console.log('🚀 [STARTUP] Sending startup notification...');
+          
+          const phoneNumber = '60123456789'; // Replace with your number
+          const message = `🚀 Simulator Started!\n\nName: ${simulator.name}\nTarget: ${simulator.target_kwh} kWh\nTime: ${new Date().toLocaleString()}\n\nYour energy simulator is now running!`;
+          
+          // Send via WhatsApp API
+          const { sendWhatsAppMessage } = await import('./whatsapp-api');
+          const result = await sendWhatsAppMessage({
+            to: phoneNumber,
+            message: message
+          });
+          
+          // Create fake trigger for history logging
+          const startupTrigger = {
+            id: `startup-${Date.now()}`,
+            simulatorId: simulator.id,
+            phoneNumber: phoneNumber,
+            thresholdPercentage: 0,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+          // Log to notification history
+          const { createNotificationHistory } = await import('./notification-storage');
+          const historyEntry = createNotificationHistory(
+            startupTrigger,
+            0, // percentage
+            result.success,
+            result.success ? undefined : (result.error || 'Failed to send startup notification')
+          );
+          
+          const storage = new (await import('./notification-storage')).LocalStorageNotificationStorage();
+          await storage.saveNotificationHistory(historyEntry);
+          
+          console.log(`${result.success ? '✅' : '❌'} [STARTUP] Startup notification ${result.success ? 'sent' : 'failed'} and logged to history`);
+        } catch (error) {
+          console.error('❌ [STARTUP] Error sending startup notification:', error);
+        }
+        
+        // After a successful create, refresh from the server to ensure we show
+        // the persisted record and any server-side defaults/derived fields.
+        await refresh();
         push({
           title: "Simulator created",
           description: `${simulator.name} is ready to run.`,
@@ -48,7 +123,12 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
         });
         return simulator;
       } catch (error) {
+        // Surface backend validation messages (e.g., 422) clearly in the UI and console.
         const message = error instanceof Error ? error.message : "Failed to create simulator";
+        // Log full error object for precise debugging (payload may contain field-level details)
+        // without disrupting the user experience.
+        // eslint-disable-next-line no-console
+        console.error("Create simulator failed", error);
         push({
           title: "Create simulator failed",
           description: message,
@@ -57,12 +137,63 @@ export function useSimulators(initialSimulators: Simulator[] = []) {
         throw error;
       }
     },
-    [push]
+    [push, refresh]
+  );
+
+  const del = useCallback(
+    async (id: string) => {
+      try {
+        await deleteSimulator(id);
+        // After a successful delete, filter the item out of the local state
+        // for an immediate UI update, then trigger a full refresh from the
+        // server to ensure consistency.
+        setSimulators((prev) => prev.filter((sim) => sim.id !== id));
+        void refresh();
+        push({
+          title: "Simulator deleted",
+          variant: "success"
+        });
+      } catch (error) {
+        // Provide user-friendly messages based on error type
+        let title = "Delete failed";
+        let description = "Failed to delete simulator";
+        
+        if (error instanceof Error) {
+          // Check if it's an API error with status code
+          const apiError = error as any;
+          if (apiError.status === 404) {
+            title = "Delete not supported";
+            description = "Backend DELETE endpoint not implemented. Contact backend team to add DELETE /api/v1/simulators/{id}";
+          } else if (apiError.status === 500 || apiError.status === 502 || apiError.status === 503) {
+            title = "Server error";
+            description = "The backend server encountered an error. Please try again.";
+          } else if (apiError.status === 401 || apiError.status === 403) {
+            title = "Permission denied";
+            description = "You don't have permission to delete this simulator";
+          } else if (!apiError.status) {
+            // Network error
+            title = "Connection failed";
+            description = "Could not connect to the server. Check your internet connection.";
+          } else {
+            description = error.message;
+          }
+        }
+        
+        console.error("Delete simulator failed", error);
+        push({
+          title,
+          description,
+          variant: "error"
+        });
+        throw error;
+      }
+    },
+    [push, refresh]
   );
 
   return useMemo(
-    () => ({ simulators, loading, error, refresh, create }),
-    [simulators, loading, error, refresh, create]
+    () => ({ simulators, loading, error, refresh, create, delete: del }),
+    [simulators, loading, error, refresh, create, del]
   );
 }
 
@@ -92,10 +223,32 @@ export function useLatestBlock(
     loading: !initialBlock && !!simulatorId,
     error: null,
     connected: false,
-    reconnecting: false
+    reconnecting: false,
+    lastReadingTs: undefined
   });
   const alertRef = useRef(false);
   const reconnectToastId = useRef<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!simulatorId) return;
+    // Only show loading if we don't have block data yet (initial load)
+    // Don't show loading during refreshes to avoid flickering
+    setState((prev) => ({ ...prev, loading: prev.block == null }));
+    try {
+      const block = await fetchLatestBlock(simulatorId);
+      setState((prev) => ({ ...prev, block, loading: false, error: null }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load latest block";
+      setState((prev) => ({ ...prev, loading: false, error: message }));
+      push({
+        title: "Unable to load latest block",
+        description: message,
+        variant: "error"
+      });
+    } finally {
+      setState((prev) => ({ ...prev, loading: false }));
+    }
+  }, [simulatorId, push]);
 
   useEffect(() => {
     if (!simulatorId) {
@@ -138,6 +291,7 @@ export function useLatestBlock(
 
     let source: EventSource | null = null;
     let disposed = false;
+    let refreshDebounceTimer: NodeJS.Timeout | null = null;
 
     let sseUrl: string;
     try {
@@ -185,10 +339,25 @@ export function useLatestBlock(
       };
 
       const processEvent = (event: SseEvent) => {
-        setState((prev) => {
-          if (event.type === "reading") {
-            return { ...prev, lastReadingTs: event.ts };
+        if (event.type === "reading") {
+          // Update lastReadingTs from SSE event
+          setState((prev) => ({ ...prev, lastReadingTs: event.ts }));
+          // Auto-refresh block data when reading is received (for prototype - ensures chart updates)
+          // Use debouncing to batch rapid readings
+          if (!cancelled && !disposed) {
+            if (refreshDebounceTimer) {
+              clearTimeout(refreshDebounceTimer);
+            }
+            refreshDebounceTimer = setTimeout(() => {
+              if (!disposed && !cancelled) {
+                void refresh();
+              }
+            }, 500); // 500ms debounce for rapid readings
           }
+          return;
+        }
+
+        setState((prev) => {
           if (event.type === "alert-80pct") {
             if (!alertRef.current) {
               alertRef.current = true;
@@ -202,6 +371,7 @@ export function useLatestBlock(
             return prev;
           }
           if (event.type === "block-update") {
+            console.log('🔄 [SSE] Block-update event received:', event);
             const previousBlock = prev.block;
             const nextBlock: LatestBlock | null = previousBlock
               ? {
@@ -216,6 +386,37 @@ export function useLatestBlock(
             if (previousBlock && event.block_start_local && event.block_start_local !== previousBlock.block_start_local) {
               alertRef.current = false;
               onWindowChange?.(event.block_start_local);
+            }
+
+            // Check notification thresholds when percentage updates
+            if (event.percent_of_target !== undefined) {
+              console.log(`🔔 [SSE] ===== NOTIFICATION CHECK START =====`);
+              console.log(`🔔 [SSE] SimulatorId: "${simulatorId}" (type: ${typeof simulatorId})`);
+              console.log(`🔔 [SSE] Percentage: ${event.percent_of_target}% (type: ${typeof event.percent_of_target})`);
+              console.log(`🔔 [SSE] NotificationManager available:`, !!notificationManager);
+              console.log(`🔔 [SSE] Event object:`, event);
+              
+              if (!simulatorId) {
+                console.error(`🔔 [SSE] ❌ SimulatorId is null/undefined, skipping notification check`);
+                // Don't return here, continue with state update
+              } else {
+              
+                try {
+                  console.log(`🔔 [SSE] 🚀 Calling checkThresholds...`);
+                  notificationManager.checkThresholds(simulatorId, event.percent_of_target)
+                    .then(() => {
+                      console.log(`🔔 [SSE] ✅ Threshold check completed for ${simulatorId}`);
+                    })
+                    .catch(error => {
+                      console.error('🔔 [SSE] ❌ Error checking notification thresholds:', error);
+                    });
+                } catch (syncError) {
+                  console.error('🔔 [SSE] ❌ Synchronous error calling checkThresholds:', syncError);
+                }
+                console.log(`🔔 [SSE] ===== NOTIFICATION CHECK END =====`);
+              }
+            } else {
+              console.log(`🔔 [SSE] No percent_of_target in event, skipping notification check`);
             }
 
             return {
@@ -245,14 +446,28 @@ export function useLatestBlock(
       if (source) {
         source.close();
       }
+      if (refreshDebounceTimer) {
+        clearTimeout(refreshDebounceTimer);
+        refreshDebounceTimer = null;
+      }
       if (reconnectToastId.current) {
         dismiss(reconnectToastId.current);
         reconnectToastId.current = null;
       }
     };
-  }, [dismiss, initialBlock, onAlert80pct, onWindowChange, push, simulatorId]);
+  }, [dismiss, initialBlock, onAlert80pct, onWindowChange, push, refresh, simulatorId]);
 
-  return state;
+
+
+  return {
+    block: state.block,
+    loading: state.loading,
+    error: state.error,
+    connected: state.connected,
+    reconnecting: state.reconnecting,
+    lastReadingTs: state.lastReadingTs,
+    refresh: refresh
+  };
 }
 
 export function useBlockHistory(simulatorId: string | null, limit = 10, initialHistory: HistoryBlock[] = []) {

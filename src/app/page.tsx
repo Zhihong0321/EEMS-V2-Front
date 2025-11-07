@@ -10,5 +10,15 @@ export default async function WelcomePage() {
     console.error("Failed to fetch simulators", error);
   }
 
-  return <SimulatorsPage initialSimulators={simulators} />;
+  return (
+    <>
+      {/* KIRO TEST BANNER - PROOF OF GITHUB SYNC */}
+      <div className="bg-red-600 text-white text-center py-4 px-6 font-bold text-lg animate-pulse">
+        🚨 KIRO TEST: This red banner proves GitHub sync is working! 🚨
+        <br />
+        <span className="text-sm">If you see this, the code changes are reaching GitHub repo</span>
+      </div>
+      <SimulatorsPage initialSimulators={simulators} />
+    </>
+  );
 }

@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import StatusBadge, { type Status } from "./status-badge";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   title: string;
@@ -25,10 +26,10 @@ export default function HealthCheckCard({
   disabled
 }: Props) {
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg shadow-slate-950/30">
+    <section className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm p-6 shadow-lg hover:shadow-xl transition-shadow duration-300">
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold text-white">{title}</h3>
           <p className="max-w-xl text-sm text-slate-400">{description}</p>
         </div>
         <StatusBadge status={status} />
@@ -37,14 +38,14 @@ export default function HealthCheckCard({
       <div className="flex flex-col gap-4 text-sm text-slate-300">{body}</div>
       {onRun && (
         <div className="flex justify-end">
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="md"
             onClick={onRun}
             disabled={disabled}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"
           >
             {actionLabel}
-          </button>
+          </Button>
         </div>
       )}
     </section>

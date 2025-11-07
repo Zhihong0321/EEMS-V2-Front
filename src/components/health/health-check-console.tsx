@@ -19,6 +19,8 @@ import {
   isOverridePersisted,
   setApiKeyOverride
 } from "@/lib/api-key";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type CheckKey = "backend" | "handshake" | "simulatorRead";
 
@@ -139,11 +141,11 @@ export default function HealthCheckConsole() {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
+    <div className="grid gap-6 lg:grid-cols-[2fr,1fr] animate-fadeIn">
       <div className="space-y-6">
         <header className="space-y-3">
-          <h1 className="text-3xl font-semibold text-white">Communication Health Checks</h1>
-          <p className="text-sm text-slate-400">
+          <h1>Communication Health Checks</h1>
+          <p className="text-sm sm:text-base text-slate-400">
             Run quick diagnostics to verify if the frontend can reach the backend services. These checks will automatically
             attach prototype headers and surface full responses for debugging.
           </p>
@@ -163,21 +165,22 @@ export default function HealthCheckConsole() {
                 Manual API key override
               </label>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <input
+                <Input
                   id="health-api-key"
                   type="password"
                   value={apiKeyInput}
                   onChange={(event) => setApiKeyInput(event.target.value)}
-                  className="flex-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-primary focus:outline-none"
+                  className="flex-1"
                   placeholder="Paste prototype API key"
                 />
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
+                  size="md"
                   onClick={handleApplyApiKey}
-                  className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-cyan-600"
+                  className="w-full sm:w-auto"
                 >
                   Apply key
-                </button>
+                </Button>
               </div>
               <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
                 <label className="inline-flex items-center gap-2">
@@ -190,13 +193,14 @@ export default function HealthCheckConsole() {
                   Remember on this device
                 </label>
                 {usingOverride && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={handleClearApiKey}
-                    className="text-slate-300 underline-offset-2 hover:text-white hover:underline"
+                    className="text-xs p-0 h-auto text-slate-300 hover:text-white hover:bg-transparent hover:underline"
                   >
                     Clear override
-                  </button>
+                  </Button>
                 )}
                 <span className="text-slate-500">
                   Useful when Railway rewrites environment variables with &ldquo;API&rdquo; into secret references.

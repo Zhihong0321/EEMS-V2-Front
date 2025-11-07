@@ -1,7 +1,10 @@
 import { getEffectiveApiKey } from "./api-key";
 import { type ApiErrorPayload, type CreateSimulatorInput, type HistoryBlock, type IngestRequest, type LatestBlock, type Simulator, type SimulatorListResponse } from "./types";
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
+// Route all browser requests through a same-origin proxy to avoid CORS.
+// The proxy is implemented at /api/bridge/[...path].
+// This keeps the frontend free from cross-origin limitations.
+export const API_BASE_URL = "/api/bridge";
 
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 
@@ -41,7 +44,7 @@ async function parseJson<T>(response: Response): Promise<T> {
 }
 
 async function createApiError(response: Response): Promise<ApiError> {
-  let payload: ApiErrorPayload | undefined;
+  let payload: (ApiErrorPayload & { detail?: unknown }) | undefined;
   try {
     payload = await response.clone().json();
   } catch {
@@ -59,12 +62,32 @@ async function createApiError(response: Response): Promise<ApiError> {
     }
   }
 
-  const message =
-    payload?.error?.message ??
-    payload?.message ??
-    response.statusText ??
-    `Request failed with status ${response.status}`;
-  return new ApiError(message, response.status, payload?.error?.code, payload?.error?.details);
+  // Prefer explicit error message/code if provided by backend
+  let message = payload?.error?.message ?? payload?.message ?? response.statusText ?? `Request failed with status ${response.status}`;
+  let code = payload?.error?.code;
+  let details = payload?.error?.details;
+
+  // FastAPI-style validation errors: { detail: [...] }
+  // Extract and flatten messages to surface meaningful feedback in the UI.
+  if (payload && payload.detail) {
+    details = payload.detail;
+    try {
+      if (Array.isArray(payload.detail)) {
+        const msgs = (payload.detail as Array<{ msg?: string; loc?: unknown; detail?: string }>).
+          map((d) => d?.msg || d?.detail || "Validation error")
+          .filter(Boolean);
+        if (msgs.length > 0) {
+          message = msgs.join("; ");
+        }
+      } else if (typeof payload.detail === "string") {
+        message = payload.detail;
+      }
+    } catch {
+      // fallback to default message
+    }
+  }
+
+  return new ApiError(message, response.status, code, details);
 }
 
 function shouldRetry(status: number) {
@@ -80,17 +103,20 @@ type RequestOptions = {
 };
 
 async function requestJson<T>(path: string, init?: RequestInit, options: RequestOptions = {}): Promise<T> {
-  const url = buildUrl(path);
+  let url = buildUrl(path);
+  if (typeof window === 'undefined') {
+    url = `http://localhost${url}`;
+  }
   const retryDelays = options.retryDelays ?? [];
   let attempt = 0;
 
   // Always ensure we use credentialsless fetch
+  const mergedHeaders = new Headers(init?.headers);
+  mergedHeaders.set("Accept", "application/json");
+
   const requestInit: RequestInit = {
     ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init?.headers ?? {})
-    }
+    headers: mergedHeaders
   };
 
   while (true) {
@@ -163,7 +189,8 @@ export async function getSimulators(): Promise<Simulator[]> {
 }
 
 export async function createSimulator(input: CreateSimulatorInput): Promise<Simulator> {
-  return await requestJson<Simulator>(
+  // Backend expects a flat body (name, target_kwh, whatsapp_number?)
+  const response = await requestJson<Simulator | { data: Simulator }>(
     "/api/v1/simulators",
     withWriteHeaders({
       method: "POST",
@@ -171,6 +198,29 @@ export async function createSimulator(input: CreateSimulatorInput): Promise<Simu
     }),
     { retryDelays: [500, 1500, 3500] }
   );
+
+  if ("data" in response) {
+    return response.data;
+  }
+
+  return response;
+}
+
+export async function deleteSimulator(id: string): Promise<void> {
+  console.log("deleteSimulator called with id:", id);
+  try {
+    await requestJson<void>(
+      `/api/v1/simulators/${id}`,
+      withWriteHeaders({
+        method: "DELETE",
+      }),
+      { retryDelays: [500, 1500] }
+    );
+    console.log("deleteSimulator successful for id:", id);
+  } catch (error) {
+    console.error("deleteSimulator error for id:", id, error);
+    throw error;
+  }
 }
 
 export async function fetchLatestBlock(simulatorId: string): Promise<LatestBlock> {
@@ -196,4 +246,68 @@ export async function ingestReadings(payload: IngestRequest): Promise<void> {
     }),
     { retryDelays: [500, 1500, 3500] }
   );
+}
+
+/**
+ * Delete future readings for a simulator.
+ * This clears all readings with timestamps in the future relative to current time.
+ * Used when starting a new simulation session to avoid showing old fast-forward data.
+ */
+export async function deleteFutureReadings(simulatorId: string): Promise<void> {
+  try {
+    // Try DELETE endpoint with simulator_id and current timestamp
+    const now = new Date().toISOString();
+    await requestJson<void>(
+      `/api/v1/readings?simulator_id=${encodeURIComponent(simulatorId)}&before=${encodeURIComponent(now)}`,
+      withWriteHeaders({
+        method: "DELETE"
+      }),
+      { retryDelays: [500, 1500] }
+    );
+  } catch (error) {
+    // If DELETE endpoint doesn't exist or fails, try alternative endpoint
+    // Some backends might use: DELETE /api/v1/simulators/{id}/readings
+    try {
+      await requestJson<void>(
+        `/api/v1/simulators/${encodeURIComponent(simulatorId)}/readings`,
+        withWriteHeaders({
+          method: "DELETE"
+        }),
+        { retryDelays: [500, 1500] }
+      );
+    } catch (fallbackError) {
+      // If both fail, log warning but don't throw - simulator can still start
+      console.warn("Failed to delete future readings from backend:", error, fallbackError);
+      // Don't throw - allow simulator to start even if cleanup fails
+    }
+  }
+}
+
+/**
+ * Get the last reading timestamp for a simulator.
+ * Returns the timestamp of the last reading, or null if no readings exist.
+ * Always returns the latest reading timestamp regardless of whether it's past or future.
+ */
+export async function getLastReadingTimestamp(simulatorId: string): Promise<string | null> {
+  try {
+    // Fetch latest block - if it has data, we can infer the last reading timestamp
+    const block = await fetchLatestBlock(simulatorId);
+    
+    // If block has data points, estimate last reading time from block start + bin duration
+    if (block.chart_bins?.points && block.chart_bins.points.length > 0) {
+      const blockStart = new Date(block.block_start_local);
+      const binSeconds = block.chart_bins.bin_seconds || 30;
+      const numPoints = block.chart_bins.points.length;
+      // Last reading would be approximately at block start + (numPoints * binSeconds)
+      const lastReadingTime = new Date(blockStart.getTime() + numPoints * binSeconds * 1000);
+      return lastReadingTime.toISOString();
+    }
+    
+    // If no data, return null (will start from current time)
+    return null;
+  } catch (error) {
+    // If fetch fails, return null (will start from current time)
+    console.warn("Failed to fetch last reading timestamp:", error);
+    return null;
+  }
 }

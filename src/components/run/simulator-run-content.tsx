@@ -20,7 +20,7 @@ export function SimulatorRunContent({ simulatorId, simulatorName, targetKwh }: S
 
   const manualPowerKw = useMemo(() => sliderValue * maxKw, [sliderValue, maxKw]);
 
-  const autoEmitter = useAutoEmitter(simulatorId, baseKw, volatility);
+  const autoEmitter = useAutoEmitter(simulatorId, baseKw, volatility, false, undefined, simulatorName);
   const manualEmitter = useManualEmitter(simulatorId, () => manualPowerKw);
 
   const toggleAuto = () => {
@@ -93,7 +93,7 @@ export function SimulatorRunContent({ simulatorId, simulatorName, targetKwh }: S
       </div>
 
       <p className="text-xs text-slate-500">
-        Auto mode sends gaussianised readings every 15 seconds; manual fast-forward emits every second with <code className="rounded bg-slate-800 px-1 py-0.5">sample_seconds=15</code> so the backend advances by 15 seconds per tick.
+        Auto mode sends gaussianised readings every 15 seconds; manual fast-forward emits every second with <code className="rounded bg-slate-800 px-1 py-0.5">sample_seconds=30</code> so the backend advances by 30 seconds per tick (30x speed).
       </p>
     </section>
   );
